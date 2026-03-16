@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.103-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=next.js)](https://nextjs.org)
-[![Anthropic Claude](https://img.shields.io/badge/Powered%20by-Claude-D97706?style=flat)](https://anthropic.com)
+
 
 ---
 
@@ -199,7 +199,6 @@ venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and fill in your keys:
 ```env
 GITLAB_PAT=your_gitlab_personal_access_token
 ANTHROPIC_API_KEY=your_anthropic_api_key
