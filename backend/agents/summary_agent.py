@@ -1,7 +1,8 @@
 """
 PRISM Summary Agent — Anthropic Claude AI risk summary generation.
 """
-import anthropic
+import logging
+from groq import AsyncGroq
 
 from config import settings
 from models.schemas import (
@@ -10,10 +11,10 @@ from models.schemas import (
 
 
 class SummaryAgent:
-    """Generates natural language risk summaries using Anthropic Claude."""
+    """Generates natural language risk summaries using Groq (Llama-3.3-70b-versatile)."""
 
     def __init__(self) -> None:
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        pass
 
     async def generate(
         self,
@@ -23,19 +24,25 @@ class SummaryAgent:
         history: HistoryResult,
         mr_title: str,
     ) -> str:
-        """Build a prompt from analysis data and call Claude for a concise summary."""
+        """Build a prompt from analysis data and call Groq for a concise summary."""
+        if not settings.groq_api_key:
+            return "AI summary unavailable — Groq API key missing in environment."
+
         try:
+            client = AsyncGroq(api_key=settings.groq_api_key)
             prompt = self._build_prompt(risk, dep, reviewers, history, mr_title)
 
-            message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+            response = await client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
                 max_tokens=300,
+                temperature=0.3,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            return message.content[0].text
+            return response.choices[0].message.content.strip()
 
-        except Exception:
+        except Exception as e:
+            logging.error(f"Groq API Error: {str(e)}")
             return "AI summary unavailable — see risk breakdown above."
 
     @staticmethod

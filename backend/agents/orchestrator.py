@@ -125,57 +125,56 @@ class AgentOrchestrator:
     ) -> None:
         """Persist the analysis results to PostgreSQL. Updates if existing."""
         try:
-            from sqlalchemy import select, delete
+            from sqlalchemy.dialects.postgresql import insert
+            from sqlalchemy import delete
             async with async_session_factory() as session:
-                # Check if analysis exists
-                result = await session.execute(
-                    select(MRAnalysis).where(
-                        MRAnalysis.project_gitlab_id == mr_event.project_id,
-                        MRAnalysis.mr_iid == mr_event.mr_iid
-                    )
+                # Upsert analysis record
+                stmt = insert(MRAnalysis).values(
+                    project_gitlab_id=mr_event.project_id,
+                    project_namespace=mr_event.project_namespace,
+                    mr_iid=mr_event.mr_iid,
+                    mr_title=mr_event.mr_title,
+                    author_username=mr_event.author_username,
+                    source_branch=mr_event.source_branch,
+                    risk_score=risk.score,
+                    risk_level=risk.level,
+                    lines_changed=change.lines_added + change.lines_removed,
+                    files_changed=len(change.changed_files),
+                    blast_radius_size=dep.total_affected,
+                    impact_depth=dep.max_impact_depth,
+                    risk_breakdown=risk.breakdown.model_dump(),
+                    blast_radius_data=dep.dependency_graph,
+                    ai_summary=ai_summary,
+                    suggested_reviewers=[r.model_dump() for r in reviewers.reviewers],
                 )
-                existing_analysis = result.scalar_one_or_none()
 
-                if existing_analysis:
-                    # Update existing record
-                    existing_analysis.mr_title = mr_event.mr_title
-                    existing_analysis.source_branch = mr_event.source_branch
-                    existing_analysis.risk_score = risk.score
-                    existing_analysis.risk_level = risk.level
-                    existing_analysis.lines_changed = change.lines_added + change.lines_removed
-                    existing_analysis.files_changed = len(change.changed_files)
-                    existing_analysis.blast_radius_size = dep.total_affected
-                    existing_analysis.impact_depth = dep.max_impact_depth
-                    existing_analysis.risk_breakdown = risk.breakdown.model_dump()
-                    existing_analysis.blast_radius_data = dep.dependency_graph
-                    existing_analysis.ai_summary = ai_summary
-                    existing_analysis.suggested_reviewers = [r.model_dump() for r in reviewers.reviewers]
-                    existing_analysis.created_at = datetime.now(timezone.utc)
-                    analysis = existing_analysis
-                else:
-                    analysis = MRAnalysis(
-                        project_gitlab_id=mr_event.project_id,
-                        project_namespace=mr_event.project_namespace,
-                        mr_iid=mr_event.mr_iid,
-                        mr_title=mr_event.mr_title,
-                        author_username=mr_event.author_username,
-                        source_branch=mr_event.source_branch,
-                        risk_score=risk.score,
-                        risk_level=risk.level,
-                        lines_changed=change.lines_added + change.lines_removed,
-                        files_changed=len(change.changed_files),
-                        blast_radius_size=dep.total_affected,
-                        impact_depth=dep.max_impact_depth,
-                        risk_breakdown=risk.breakdown.model_dump(),
-                        blast_radius_data=dep.dependency_graph,
-                        ai_summary=ai_summary,
-                        suggested_reviewers=[
-                            r.model_dump() for r in reviewers.reviewers
-                        ],
-                    )
-                    session.add(analysis)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=['project_gitlab_id', 'mr_iid'],
+                    set_={
+                        'mr_title': stmt.excluded.mr_title,
+                        'source_branch': stmt.excluded.source_branch,
+                        'risk_score': stmt.excluded.risk_score,
+                        'risk_level': stmt.excluded.risk_level,
+                        'lines_changed': stmt.excluded.lines_changed,
+                        'files_changed': stmt.excluded.files_changed,
+                        'blast_radius_size': stmt.excluded.blast_radius_size,
+                        'impact_depth': stmt.excluded.impact_depth,
+                        'risk_breakdown': stmt.excluded.risk_breakdown,
+                        'blast_radius_data': stmt.excluded.blast_radius_data,
+                        'ai_summary': stmt.excluded.ai_summary,
+                        'suggested_reviewers': stmt.excluded.suggested_reviewers,
+                        'created_at': datetime.now(timezone.utc)
+                    }
+                ).returning(MRAnalysis.id)
+
+                result = await session.execute(stmt)
+                analysis_id = result.scalar_one()
                 
-                await session.flush()
+                # We need a dummy object for the next lines that use analysis.id
+                class DummyAnalysis:
+                    pass
+                analysis = DummyAnalysis()
+                analysis.id = analysis_id
 
                 # Delete old file history for this analysis if updating
                 await session.execute(
