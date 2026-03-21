@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables and .env file."""
 
     gitlab_pat: str = Field(..., description="GitLab Personal Access Token with api + ai_features scope")
-    anthropic_api_key: str = Field(..., description="Anthropic API key for Claude")
+    groq_api_key: str = Field(default="", description="Groq API key for Llama 3.3")
     webhook_secret: str = Field(..., description="Secret token configured in GitLab webhook settings")
     database_url: str = Field(..., description="PostgreSQL async connection string")
     repo_cache_dir: str = Field(default="/tmp/prism/repos", description="Local repo cache directory")
