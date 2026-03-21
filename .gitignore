@@ -1,28 +1,14 @@
-# Python virtual environment - NEVER commit this
-venv/
-env/
-.venv/
+.env
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-
-# Environment variables - NEVER commit this
-backend/.env
-.env
-.env.local
-.env.production
-
-# Next.js
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-
-# OS files
+node_modules/
+.next/
+.venv/
+venv/
+*.egg-info/
 .DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
+*.log
+repo-cache/
+alembic/versions/*.pyc
