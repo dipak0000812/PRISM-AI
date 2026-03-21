@@ -37,10 +37,6 @@ async def gitlab_webhook(request: Request, background_tasks: BackgroundTasks):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
     
-    # DEBUG — remove after fix
-    import logging
-    logging.warning(f"PAYLOAD project block: {payload.get('project', {})}")
-
     # Step 4: Only process merge_request open events
     object_kind = payload.get("object_kind", "")
     if object_kind != "merge_request":
@@ -70,7 +66,7 @@ async def gitlab_webhook(request: Request, background_tasks: BackgroundTasks):
     mr_event = MREvent(
         project_id=project.get("id", 0),
         project_namespace=project.get("path_with_namespace", ""),
-        project_http_url=project.get("git_http_url") or project.get("http_url", ""),
+        project_http_url=project.get("http_url", "") or project.get("git_http_url", ""),
         mr_iid=object_attributes.get("iid", 0),
         mr_title=object_attributes.get("title", ""),
         source_branch=object_attributes.get("source_branch", ""),
