@@ -1,0 +1,22 @@
+flow:
+  name: PRISM MR Risk Analysis Flow
+  description: >
+    Automated flow that triggers when a merge request is opened,
+    runs PRISM risk analysis, and posts results as MR comment.
+  
+  trigger:
+    event: merge_request
+    action: open
+    
+  steps:
+    - name: analyze_risk
+      agent: prism-risk-agent
+      input:
+        mr_iid: "{{ event.merge_request.iid }}"
+        project_id: "{{ event.project.id }}"
+        
+    - name: post_comment
+      action: gitlab_comment
+      input:
+        mr_iid: "{{ event.merge_request.iid }}"
+        body: "{{ steps.analyze_risk.output }}"
