@@ -40,7 +40,8 @@ const RISK_CONFIG = {
 };
 
 export function RiskPill({ level }: RiskPillProps) {
-  const config = RISK_CONFIG[level];
+  const config = RISK_CONFIG[level as RiskLevel] ?? RISK_CONFIG["low"];
+
 
   return (
     <motion.div

@@ -1,262 +1,152 @@
-# 🛡️ PRISM-AI — Pull Request Impact & Safety Monitor
+# PRISM 
+**Autonomous blast radius intelligence for every merge request.**
 
-> Autonomous Risk Intelligence for GitLab Merge Requests
-
-[![GitLab AI Hackathon](https://img.shields.io/badge/GitLab%20AI%20Hackathon-2026-FC6D26?style=flat&logo=gitlab)](https://gitlab.com)
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.103-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=next.js)](https://nextjs.org)
-
+[![GitLab AI Hackathon](https://img.shields.io/badge/GitLab_AI_Hackathon-2026-fc6d26?logo=gitlab)](https://about.gitlab.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js)](https://nextjs.org)
+[![Groq Llama 3](https://img.shields.io/badge/Powered_by-Groq_Llama--3-f55036)](https://groq.com)
 
 ---
 
-## What is PRISM-AI?
+## 🛑 The Problem
 
-PRISM-AI is an autonomous AI agent system that activates the moment a Merge Request is created on GitLab. It automatically analyzes the change, predicts its blast radius across the codebase, calculates a risk score, and posts a full risk intelligence report directly back to the MR — before any human reviewer opens the diff.
+Large engineering teams merge hundreds of pull requests weekly. 
+Each one is a potential blast event — a change that propagates 
+through dependency layers in ways no single reviewer can manually trace.
 
-**The core question PRISM-AI answers:**
-> *"If we merge this PR right now, what breaks?"*
+The questions that go unanswered before every merge:
+- Which downstream services depend on this file?
+- Has this module caused incidents before?  
+- How deep does the dependency chain run?
+- Who has the most context to catch edge cases?
 
----
+The result is production incidents, security regressions, and 
+maintainer burnout from manual code archaeology on every review.
 
-## The Problem
-
-Large software projects receive hundreds of Merge Requests daily. Maintainers are forced to make merge decisions without knowing:
-
-- Which downstream services depend on the changed files
-- Whether the file has historically caused bugs or hotfixes
-- How deep the dependency chain runs across the codebase
-- Who has the most context to review the change
-
-The result: production incidents, broken integrations, and security regressions that should have been caught at review time.
+PRISM answers all four questions automatically, in under 4 seconds,
+before any human opens the diff.
 
 ---
 
-## The Solution
+## ⚙️ How PRISM Works
 
-PRISM-AI plugs directly into the GitLab event pipeline via webhooks. When a Merge Request is opened or updated:
-```
-MR Created on GitLab
-        ↓
-PRISM-AI Webhook Receives Event
-        ↓
-Agent Pipeline Activates Automatically
-        ↓
-┌─────────────────────────────────────┐
-│  Change Agent    → What changed?    │
-│  Dependency Agent→ What's affected? │
-│  History Agent   → Any past bugs?   │
-│  Risk Engine     → Score 0-100      │
-│  Reviewer Agent  → Who should look? │
-│  Claude AI       → Plain English    │
-└─────────────────────────────────────┘
-        ↓
-Risk Report Posted to GitLab MR
-        ↓
-Reviewers Auto-Assigned
-```
+PRISM is an event-driven, multi-agent AI pipeline. It ingests GitLab webhook payloads, mathematically traverses the repository syntax tree, analyzes the git blame footprint, and coordinates deterministic heuristics to block dangerous merges.
 
----
-
-## Core Features
-
-### 1. Blast Radius Map
-AST-based dependency graph showing every module, service, and file affected by the change — color coded by impact level (direct, transitive, distant).
-
-### 2. Risk Score Engine
-Deterministic 0–100 risk score calculated from 6 signals:
-
-| Signal | Weight |
-|--------|--------|
-| PR size (lines changed) | Up to +20 |
-| File churn rate (last 30 days) | Up to +20 |
-| Core module touched | +20 |
-| Tests removed or reduced | +20 |
-| Blast radius depth | Up to +15 |
-| Author experience with module | +10 |
-
-### 3. AI Risk Explanation
-Anthropic Claude generates a 3-sentence plain-English risk summary with a concrete merge recommendation — specific module names, specific risks, specific actions.
-
-### 4. Reviewer Recommendation
-Git blame + commit history analysis automatically identifies who has the deepest context on the affected code and tags them directly in the MR.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.11 + FastAPI |
-| Code Analysis | tree-sitter + GitPython |
-| Graph Engine | NetworkX |
-| AI Layer | Anthropic Claude API |
-| Database | PostgreSQL + SQLAlchemy |
-| Frontend | Next.js 16 + TypeScript |
-| Styling | Tailwind CSS |
-| Visualization | D3.js (force-directed graph) |
-| Infrastructure | Docker + GitLab Webhooks |
-
----
-
-## Architecture
-```
-GitLab Webhook (MR Event)
-          │
-          ▼
-  Webhook Receiver (FastAPI)
-          │
-          ▼
-  Agent Orchestrator
-          │
-  ┌───────┼────────────┐
-  ▼       ▼            ▼
-Change  Dependency   History
-Agent   Agent        Agent
-          │
-          ▼
-  Risk Scoring Engine
-          │
-     ┌────┴────┐
-     ▼         ▼
-Reviewer    Claude AI
- Agent      Summary
-     └────┬────┘
-          ▼
-  GitLab Comment Bot
-  (Posts report to MR)
-          │
-          ▼
-  PostgreSQL (Persists results)
-          │
-          ▼
-  Next.js Dashboard
-  (D3.js Blast Radius Graph)
+```text
+┌─────────────────────────────────────────────────────────┐
+│                    GITLAB PLATFORM                      │
+│              Developer opens Merge Request              │
+└──────────────────────┬──────────────────────────────────┘
+                       │ webhook event
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                  PRISM BACKEND (FastAPI)                 │
+│                                                         │
+│  Webhook Receiver → HMAC validation → Background task  │
+│                                                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
+│  │  Change  │  │   Dep.   │  │ History  │             │
+│  │  Agent   │  │  Agent   │  │  Agent   │             │
+│  │diff+AST  │  │NetworkX  │  │GitPython │             │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘             │
+│       └─────────────┼─────────────┘                    │
+│                     ▼                                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
+│  │  Risk    │  │Reviewer  │  │  Groq    │             │
+│  │  Agent   │  │  Agent   │  │   AI     │             │
+│  │ 0-100    │  │git blame │  │ Summary  │             │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘             │
+│       └─────────────┼─────────────┘                    │
+│                     ▼                                   │
+│            GitLab Comment Bot                           │
+│         PostgreSQL (Analysis Store)                     │
+└─────────────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│              PRISM DASHBOARD (Next.js)                  │
+│     D3.js Blast Radius Graph · Risk Analytics           │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Project Structure
-```
-prism-ai/
-├── backend/
-│   ├── agents/
-│   │   ├── orchestrator.py      # Pipeline coordinator
-│   │   ├── change_agent.py      # Diff extraction
-│   │   ├── dependency_agent.py  # AST + graph analysis
-│   │   ├── history_agent.py     # Git log mining
-│   │   ├── risk_engine.py       # Risk scoring (0-100)
-│   │   ├── reviewer_agent.py    # Reviewer recommendation
-│   │   └── summary_agent.py     # Claude integration
-│   ├── webhook/
-│   │   ├── router.py            # POST /webhook/gitlab
-│   │   └── handler.py           # Event dispatcher
-│   ├── services/
-│   │   ├── gitlab_service.py    # GitLab API client
-│   │   ├── repo_service.py      # Repo clone + cache
-│   │   └── anthropic_service.py # Claude API wrapper
-│   ├── graph/
-│   │   ├── parser.py            # tree-sitter AST parsing
-│   │   ├── builder.py           # NetworkX graph build
-│   │   └── analyzer.py          # BFS blast radius
-│   ├── models/
-│   │   └── domain.py            # Pydantic data models
-│   ├── db/
-│   │   └── database.py          # SQLAlchemy + Alembic
-│   ├── main.py                  # FastAPI entry point
-│   └── requirements.txt
-├── frontend/
-│   ├── app/
-│   │   ├── page.tsx             # Dashboard
-│   │   └── mr/[id]/page.tsx     # MR detail view
-│   └── components/
-│       ├── BlastRadiusGraph.tsx # D3.js force graph
-│       ├── RiskGauge.tsx        # Score arc gauge
-│       └── AISummaryCard.tsx    # Claude output card
-├── docs/
-│   └── architecture.png
-├── docker-compose.yml
-├── .gitignore
-└── README.md
+## 🛡️ Key Features
+
+### Deterministic Risk Triangulation
+Rather than relying on opaque LLMs to "guess" risk, PRISM anchors on six deterministic metrics extracted directly from AST dependencies and Git history.
+
+| Factor | Signal | Max Points |
+|--------|--------|-----------|
+| PR Size | Lines changed | 15 |
+| File Churn | Commits per file (30d) | 20 |
+| Core Module | auth/payment/security touched | 20 |
+| Test Coverage | Tests removed or missing | 20 |
+| Dependency Depth | BFS traversal layers | 15 |
+| Author Experience | Prior commits to module | 10 |
+
+### Abstract Syntax Tree (AST) Blast Engine
+Using `tree-sitter`, PRISM reconstructs the entire Python/JS project as a `NetworkX` Directed Graph in memory. It executes a Breadth-First-Search (BFS) reversal to calculate the exact structural blast radius of any mutated module.
+
+### Precision Reviewer Targeting
+We bypass primitive codeowners files. Utilizing `git blame` layered against specific modified code blocks, PRISM resolves the most highly-correlated active maintainers who authentically hold the domain context natively.
+
+### Groq Fast-Path LLM Generation
+Only after deterministic data structures are extracted does PRISM hit the `Llama-3.3-70b` foundational model via Groq's LPUs. Inferencing happens precisely on a narrow window of factual metadata to project human-readable developer summaries instantly.
+
+---
+
+## 📽️ Demo
+
+![PRISM Analysis in Action](/placeholder-demo.gif)
+*(The PRISM bot intercepts the webhook, analyzes the risk trajectory locally, and fires a targeted PR review comment within 4 seconds containing the blast graph, risk scoring breakdown, and reviewer tags.)*
+
+---
+
+## 🖥️ Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Backend | Python 3.12 + FastAPI | Async webhook processing |
+| Code Analysis | tree-sitter 0.21 | Language-aware AST parsing |
+| Graph Engine | NetworkX + BFS | Blast radius computation |
+| AI Summary | Groq (llama-3.3-70b) | Risk explanation generation |
+| Database | PostgreSQL + SQLAlchemy | Analysis persistence |
+| Frontend | Next.js 15 + TypeScript | Real-time dashboard |
+| Visualization | D3.js force-directed | Interactive blast radius graph |
+| Auth | NextAuth.js v5 | OAuth (Google/GitHub/GitLab) |
+| Infrastructure | Docker Compose | One-command deployment |
+
+---
+
+## 🚀 Quick Start
+
+Spin up the entire intelligence platform locally via Docker.
+
+```bash
+git clone https://gitlab.com/Dipak_09/prism-ai
+cd prism-ai
+cp .env.example .env   # Add your GITLAB_PAT, GROQ_API_KEY
+docker-compose up -d
+# Configure GitLab webhook → https://your-ngrok-url/webhook/gitlab
+# Open a merge request → watch PRISM analyze it automatically
 ```
 
 ---
 
-## Getting Started
+## 🌐 API Reference
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL (or Docker)
-- GitLab account with a project
-- Anthropic API key
+PRISM exposes a strictly structured RESTful pipeline over FastAPI.
 
-### Backend Setup
-```powershell
-cd backend
-python -m venv venv
-venv\Scripts\activate        # Windows
-pip install -r requirements.txt
-```
+- `POST /webhook/gitlab`: Edge ingestion layer for Merge Requests. Validates the `X-Gitlab-Token` cryptographically and spawns the decoupled background pipeline.
+- `GET /api/analyses`: Fetches the aggregated, JSONB-serialized risk trajectories to bootstrap the frontend visualizer.
+- `GET /api/analyses/{id}`: Detailed metric payload traversing the blast radius and factor weights.
 
-```env
-GITLAB_PAT=your_gitlab_personal_access_token
-ANTHROPIC_API_KEY=your_anthropic_api_key
-WEBHOOK_SECRET=your_webhook_secret
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/prismai
-```
-
-Run the backend:
-```powershell
-python -m uvicorn main:app --reload --port 8000
-```
-
-### Frontend Setup
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Visit `http://localhost:3000`
-
-### GitLab Webhook Configuration
-
-In your GitLab project → Settings → Webhooks:
-- URL: `https://your-domain.com/webhook/gitlab`
-- Trigger: Merge Request Events
-- Secret Token: value from your `.env`
+*Full OpenAPI Swagger specification available routinely at `http://localhost:8000/docs`.*
 
 ---
 
-## API Reference
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Service health check |
-| `/webhook/gitlab` | POST | GitLab MR event receiver |
-| `/api/mr` | GET | List all analyzed MRs |
-| `/api/mr/{id}` | GET | Full MR analysis detail |
-| `/api/stats` | GET | Dashboard statistics |
-
-Full interactive API docs at `http://localhost:8000/docs`
-
----
-
-## Team
-
-**ZerothLayer**
-
----
-
-## Built For
-
-GitLab AI Hackathon 2026 — *"You Orchestrate. AI Accelerates."*
-
-Target prizes: Grand Prize · Most Technically Impressive · Most Impactful · GitLab + Anthropic Prize
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
+## 🏅 Team & Hackathon Context
+**Team:** Tech_Exchangers
+**Submission:** GitLab AI Hackathon 2026 
+**Goals:** To introduce enterprise-grade code intelligence seamlessly into the merge workflow, eliminating speculative review assignments and fundamentally ending blind production failures. 

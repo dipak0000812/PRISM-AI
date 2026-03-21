@@ -1,14 +1,39 @@
-.env
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-node_modules/
-.next/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+dist/
+build/
 .venv/
 venv/
-*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
 *.log
+
+# Repo cache
+/tmp/prism/
 repo-cache/
-alembic/versions/*.pyc

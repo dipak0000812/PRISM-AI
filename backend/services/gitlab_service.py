@@ -1,22 +1,25 @@
 """
-PRISM GitLab Service — Async GitLab REST API client.
+PRISM GitLab Service — Robust asynchronous bridge to the GitLab API ecosystem.
 """
-import httpx
 from typing import Any
 
-from config import settings
-from models.schemas import RiskResult, DependencyResult, ReviewerResult
+import httpx
 
+from config import settings
+from models.schemas import DependencyAnalysisResult, ReviewerAnalysisResult, RiskAnalysisResult
 
 GITLAB_BASE_URL = "https://gitlab.com/api/v4"
 
 
 class GitLabService:
-    """Async client for the GitLab REST API."""
+    """
+    Stateful boundary client isolating PRISM from GitLab's raw HTTP layer.
+    Pre-configures connection pooling and unified auth.
+    """
 
     def __init__(self) -> None:
-        self.base_url = GITLAB_BASE_URL
-        self.headers = {
+        self.base_url: str = GITLAB_BASE_URL
+        self.headers: dict[str, str] = {
             "PRIVATE-TOKEN": settings.gitlab_pat,
             "Content-Type": "application/json",
         }
@@ -29,81 +32,79 @@ class GitLabService:
         )
 
     async def get_mr_diffs(self, project_id: int, mr_iid: int) -> list[dict[str, Any]]:
-        """GET /projects/{id}/merge_requests/{iid}/diffs — fetch MR file diffs."""
+        """Extract line-level architectural mutations for a specific merge request."""
         async with self._client() as client:
-            response = await client.get(
+            gitlab_response: httpx.Response = await client.get(
                 f"/projects/{project_id}/merge_requests/{mr_iid}/diffs"
             )
-            response.raise_for_status()
-            return response.json()
+            gitlab_response.raise_for_status()
+            return gitlab_response.json()
 
     async def get_mr_commits(self, project_id: int, mr_iid: int) -> list[dict[str, Any]]:
-        """GET /projects/{id}/merge_requests/{iid}/commits — fetch MR commits."""
+        """Fetch the chronological sequence of commits establishing the behavioral payload of the MR."""
         async with self._client() as client:
-            response = await client.get(
+            gitlab_response: httpx.Response = await client.get(
                 f"/projects/{project_id}/merge_requests/{mr_iid}/commits"
             )
-            response.raise_for_status()
-            return response.json()
+            gitlab_response.raise_for_status()
+            return gitlab_response.json()
 
     async def get_user_by_id(self, user_id: int) -> dict[str, Any]:
-        """GET /users/{id} — fetch user details (username, etc.)."""
+        """Resolve numeric author IDs to global usernames for downstream `@` tagging."""
         async with self._client() as client:
-            response = await client.get(f"/users/{user_id}")
-            response.raise_for_status()
-            return response.json()
+            gitlab_response: httpx.Response = await client.get(f"/users/{user_id}")
+            gitlab_response.raise_for_status()
+            return gitlab_response.json()
 
     async def post_mr_comment(self, project_id: int, mr_iid: int, body: str) -> None:
-        """POST /projects/{id}/merge_requests/{iid}/notes — post a comment on an MR."""
+        """Inject the finalized PRISM computational report directly back into the remote MR thread."""
         async with self._client() as client:
-            response = await client.post(
+            gitlab_response: httpx.Response = await client.post(
                 f"/projects/{project_id}/merge_requests/{mr_iid}/notes",
                 json={"body": body},
             )
-            response.raise_for_status()
+            gitlab_response.raise_for_status()
 
     async def assign_reviewers(self, project_id: int, mr_iid: int, reviewer_ids: list[int]) -> None:
-        """PUT /projects/{id}/merge_requests/{iid} — assign reviewers to an MR."""
+        """Surgically override the merge request assignee blocks logically routing ownership."""
         async with self._client() as client:
-            response = await client.put(
+            gitlab_response: httpx.Response = await client.put(
                 f"/projects/{project_id}/merge_requests/{mr_iid}",
                 json={"reviewer_ids": reviewer_ids},
             )
-            response.raise_for_status()
+            gitlab_response.raise_for_status()
 
     async def add_labels(self, project_id: int, mr_iid: int, labels: list[str]) -> None:
-        """PUT /projects/{id}/merge_requests/{iid} — add labels to an MR."""
+        """Emblazon the structural MR with color-coded, queryable risk posture signals dynamically."""
         async with self._client() as client:
-            response = await client.put(
+            gitlab_response: httpx.Response = await client.put(
                 f"/projects/{project_id}/merge_requests/{mr_iid}",
                 json={"labels": ",".join(labels)},
             )
-            response.raise_for_status()
+            gitlab_response.raise_for_status()
 
 
 def format_comment(
-    risk: RiskResult,
-    dep: DependencyResult,
-    reviewers: ReviewerResult,
-    summary: str,
+    risk_analysis: RiskAnalysisResult,
+    dependency_analysis: DependencyAnalysisResult,
+    reviewer_analysis: ReviewerAnalysisResult,
+    ai_summary: str,
 ) -> str:
-    """Format the complete PRISM risk analysis report as a GitLab Markdown comment."""
-
-    # Emoji mapping by risk level
-    emoji_map = {
+    """
+    Project the mathematical PRISM structures into a human-readable Markdown telemetry report formatting.
+    """
+    emoji_map: dict[str, str] = {
         "critical": "🔴",
         "high": "🟠",
         "medium": "🟡",
         "low": "🟢",
     }
-    emoji = emoji_map.get(risk.level, "⚪")
+    emoji: str = emoji_map.get(risk_analysis.level, "⚪")
 
-    # Blast radius chain
-    blast_chain = " → ".join(dep.blast_radius[:8]) if dep.blast_radius else "No downstream impact detected"
+    blast_chain: str = " → ".join(dependency_analysis.blast_radius[:8]) if dependency_analysis.blast_radius else "No downstream impact detected"
 
-    # Risk breakdown table rows
-    breakdown = risk.breakdown
-    rows = []
+    breakdown = risk_analysis.breakdown
+    rows: list[str] = []
 
     factor_labels = {
         "pr_size": ("PR Size", lambda d: f"{d.get('lines', 0)} lines changed"),
@@ -115,35 +116,34 @@ def format_comment(
     }
 
     for key, (label, signal_fn) in factor_labels.items():
-        factor_data = getattr(breakdown, key, {})
-        points = factor_data.get("points", 0)
-        signal = signal_fn(factor_data)
+        factor_data: dict[str, int | str] = getattr(breakdown, key, {})
+        points: int = int(factor_data.get("points", 0))
+        signal: str = str(signal_fn(factor_data))
         rows.append(f"| {label} | {signal} | +{points} |")
 
-    rows_str = "\n".join(rows)
+    rows_str: str = "\n".join(rows)
 
-    # Reviewer mentions
-    reviewer_mentions = " ".join(
-        [f"@{r.username}" for r in reviewers.reviewers]
-    ) if reviewers.reviewers else "No reviewers suggested"
+    reviewer_mentions: str = " ".join(
+        [f"@{r.username}" for r in reviewer_analysis.reviewers]
+    ) if reviewer_analysis.reviewers else "No reviewers suggested"
 
-    comment = f"""## 🛡️ PRISM — Risk Analysis Report
+    comment: str = f"""## 🛡️ PRISM — Risk Analysis Report
 
-**Risk Score: {risk.score} / 100** {emoji} {risk.level.upper()}
+**Risk Score: {risk_analysis.score} / 100** {emoji} {risk_analysis.level.upper()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ### 💥 Blast Radius
 `{blast_chain}`
-**{dep.total_affected} downstream modules across {dep.max_impact_depth} dependency layers**
+**{dependency_analysis.total_affected} downstream modules across {dependency_analysis.max_impact_depth} dependency layers**
 
 ### 📊 Risk Score Breakdown
 | Factor | Signal | Points |
 |--------|--------|--------|
 {rows_str}
-| **Total** | | **{risk.score}** |
+| **Total** | | **{risk_analysis.score}** |
 
 ### 🤖 AI Risk Summary
-> {summary}
+> {ai_summary}
 
 ### 👥 Suggested Reviewers
 {reviewer_mentions}

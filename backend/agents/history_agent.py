@@ -1,32 +1,32 @@
 """
-PRISM History Agent — Git log churn analysis and incident correlation.
+PRISM History Agent — Commit traversal engines profiling code stability logic.
 """
 import asyncio
 from datetime import datetime, timedelta
 
 import git
 
-from models.schemas import HistoryResult
+from models.schemas import HistoryAnalysisResult
 
-
-HOTFIX_KEYWORDS = [
-    "hotfix", "fix:", "bugfix", "revert", "patch", "regression", "rollback"
-]
+HOTFIX_KEYWORDS: frozenset[str] = frozenset({"hotfix", "fix:", "bugfix", "revert", "patch", "regression", "rollback"})
 
 
 class HistoryAgent:
-    """Analyzes repository commit history for file churn, incidents, and author experience."""
+    """
+    Miners analyzing chronological VCS state, extracting systemic failures and author expertise mapping.
+    """
 
     async def analyze(
         self,
         changed_files: list[str],
         repo: git.Repo,
         author_username: str,
-    ) -> HistoryResult:
-        """Run all history analysis methods asynchronously via thread pool."""
-        loop = asyncio.get_event_loop()
+    ) -> HistoryAnalysisResult:
+        """
+        Orchestrator firing concurrent, highly intensive git-log scan jobs efficiently via thread pools.
+        """
+        loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
-        # Run all three analyses concurrently in executor threads
         churn_future = loop.run_in_executor(
             None, self._compute_file_churn, repo, changed_files, 30
         )
@@ -37,11 +37,11 @@ class HistoryAgent:
             None, self._get_author_experience, repo, changed_files, author_username
         )
 
-        churn_scores = await churn_future
-        incident_counts = await incident_future
-        author_experience = await experience_future
+        churn_scores: dict[str, int] = await churn_future
+        incident_counts: dict[str, int] = await incident_future
+        author_experience: dict[str, int] = await experience_future
 
-        return HistoryResult(
+        return HistoryAnalysisResult(
             churn_scores=churn_scores,
             incident_counts=incident_counts,
             author_experience=author_experience,
@@ -53,21 +53,22 @@ class HistoryAgent:
         changed_files: list[str],
         days: int = 30,
     ) -> dict[str, int]:
-        """Count how many commits touched each changed file in the last N days.
-        
-        High churn = instability indicator.
         """
-        since = datetime.now() - timedelta(days=days)
-        churn: dict[str, int] = {f: 0 for f in changed_files}
+        Pinpoints modules actively shifting in purpose, effectively proxying instability.
+        """
+        since: datetime = datetime.now() - timedelta(days=days)
+        churn: dict[str, int] = {file_str: 0 for file_str in changed_files}
 
         try:
             for commit in repo.iter_commits(
                 repo.head.ref, since=since.isoformat(), max_count=1000
             ):
                 for f in commit.stats.files:
-                    normalized = f.replace("\\", "/")
+                    normalized: str = f.replace("\\", "/")
                     if normalized in churn:
                         churn[normalized] += 1
+        except git.exc.GitCommandError:
+            pass
         except Exception:
             pass
 
@@ -78,20 +79,21 @@ class HistoryAgent:
         repo: git.Repo,
         changed_files: list[str],
     ) -> dict[str, int]:
-        """Scan recent commits for hotfix/incident keywords and count per file.
-        
-        Files frequently involved in hotfixes are higher risk.
         """
-        incident_counts: dict[str, int] = {f: 0 for f in changed_files}
+        Uncovers recurring historical traps by hunting specific production-save keywords.
+        """
+        incident_counts: dict[str, int] = {file_str: 0 for file_str in changed_files}
 
         try:
             for commit in repo.iter_commits(repo.head.ref, max_count=500):
-                msg = commit.message.lower()
+                msg: str = commit.message.lower()
                 if any(kw in msg for kw in HOTFIX_KEYWORDS):
                     for f in commit.stats.files:
-                        normalized = f.replace("\\", "/")
+                        normalized: str = f.replace("\\", "/")
                         if normalized in incident_counts:
                             incident_counts[normalized] += 1
+        except git.exc.GitCommandError:
+            pass
         except Exception:
             pass
 
@@ -103,25 +105,26 @@ class HistoryAgent:
         changed_files: list[str],
         author_username: str,
     ) -> dict[str, int]:
-        """Count how many commits the MR author has made to each changed file.
-        
-        Low experience = higher risk (author unfamiliar with the code).
         """
-        experience: dict[str, int] = {f: 0 for f in changed_files}
+        Cross-validates an author's commit cadence relative to specific files, isolating blind spots objectively.
+        """
+        experience: dict[str, int] = {file_str: 0 for file_str in changed_files}
 
         try:
             for commit in repo.iter_commits(repo.head.ref, max_count=500):
-                author_name = commit.author.name or ""
-                author_email = commit.author.email or ""
+                author_name: str = commit.author.name or ""
+                author_email: str = commit.author.email or ""
 
                 if (
                     author_username.lower() in author_name.lower()
                     or author_username.lower() in author_email.lower()
                 ):
                     for f in commit.stats.files:
-                        normalized = f.replace("\\", "/")
+                        normalized: str = f.replace("\\", "/")
                         if normalized in experience:
                             experience[normalized] += 1
+        except git.exc.GitCommandError:
+            pass
         except Exception:
             pass
 

@@ -1,21 +1,13 @@
 """
-PRISM Webhook Validator — GitLab token verification.
+PRISM Webhook Validator — Cryptographic boundaries for verifying GitLab trust.
 """
 import hmac
 
 
 def validate_gitlab_signature(payload: bytes, signature: str, secret: str) -> bool:
-    """Validate the GitLab webhook token.
-    
-    GitLab sends the raw secret in the X-Gitlab-Token header (not HMAC).
-    We use constant-time comparison to prevent timing attacks.
-    
-    Args:
-        payload: Raw request body bytes (unused for token-based auth, kept for interface).
-        signature: Value of the X-Gitlab-Token header.
-        secret: The configured webhook secret.
-        
-    Returns:
-        True if the token matches, False otherwise.
+    """
+    Secure constant-time edge verifier.
+    GitLab specifically embeds the raw webhook secret into X-Gitlab-Token natively, bypassing standard HMAC SHA256 workflows.
+    Using compare_digest guarantees we are immune to basic timing attacks against the secret string.
     """
     return hmac.compare_digest(signature, secret)

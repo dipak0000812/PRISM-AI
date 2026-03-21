@@ -1,29 +1,41 @@
 """
-PRISM Agent Orchestrator — Pipeline coordinator that sequences all agents.
+PRISM Agent Orchestrator — Synchronous mapping and execution sequence for the decoupled AI pipelines.
 """
 import time
 from datetime import datetime, timezone
 
+from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from config import settings
-from models.schemas import MREvent, AnalysisResult
-from models.db_models import MRAnalysis, FileRiskHistory
-from db.database import async_session_factory
 from agents.change_agent import ChangeAgent
 from agents.dependency_agent import DependencyAgent
 from agents.history_agent import HistoryAgent
-from agents.risk_agent import RiskAgent
 from agents.reviewer_agent import ReviewerAgent
+from agents.risk_agent import RiskAgent
 from agents.summary_agent import SummaryAgent
+from config import settings
+from db.database import async_session_factory
+from models.db_models import FileRiskHistory, MRAnalysis
+from models.schemas import (
+    ChangeAnalysisResult,
+    DependencyAnalysisResult,
+    HistoryAnalysisResult,
+    MREvent,
+    ReviewerAnalysisResult,
+    RiskAnalysisResult,
+)
 from services.gitlab_service import GitLabService, format_comment
 from services.repo_service import clone_or_fetch
-from utils.logging import log_pipeline_start, log_pipeline_complete, log_error
+from utils.logging import log_error, log_pipeline_complete, log_pipeline_start
 
 
 class AgentOrchestrator:
-    """Coordinates the full PRISM analysis pipeline from webhook to GitLab comment."""
+    """
+    Spawns and sequences the strict 7-stage analytical pipeline.
+    Maintains stateless failure isolation; the orchestrator will never crash the webhook ingress event.
+    """
 
     def __init__(self) -> None:
         self.change_agent = ChangeAgent()
@@ -35,100 +47,100 @@ class AgentOrchestrator:
         self.gitlab = GitLabService()
 
     async def run_pipeline(self, mr_event: MREvent) -> None:
-        """Execute the complete analysis pipeline.
-        
-        Steps:
-        1. Clone/fetch the repository
-        2. Run Change Agent (diff analysis)
-        3. Run Dependency Agent (AST + graph)
-        4. Run History Agent (git log churn)
-        5. Run Risk Agent (weighted scoring - sync)
-        6. Run Reviewer Agent (git blame)
-        7. Run Summary Agent (Claude AI)
-        8. Save to database
-        9. Post GitLab comment
-        10. Add labels if high-risk
-        
-        Never crashes the webhook handler — all errors are caught and logged.
         """
-        start_time = time.time()
+        Executes the async graph traversal and LLM generation loop organically.
+        Stage order matters strictly: Dependency trees require Change inputs; Risk requires all three prior states.
+        """
+        start_time: float = time.time()
         log_pipeline_start(mr_event)
 
         try:
-            # ── Stage 1: Clone or fetch repository ──
             repo = await clone_or_fetch(
                 mr_event.project_namespace,
                 mr_event.project_http_url,
             )
 
-            # ── Stage 2: Change analysis (what files changed?) ──
-            change = await self.change_agent.analyze(mr_event, repo)
+            change_analysis: ChangeAnalysisResult = await self.change_agent.analyze(mr_event, repo)
 
-            # ── Stage 3: Dependency graph (blast radius) ──
-            dep = await self.dependency_agent.build_graph(
-                change.changed_files, repo.working_dir
+            dependency_analysis: DependencyAnalysisResult = await self.dependency_agent.build_graph(
+                change_analysis.changed_files, repo.working_dir
             )
 
-            # ── Stage 4: History analysis (churn + incidents) ──
-            history = await self.history_agent.analyze(
-                change.changed_files, repo, mr_event.author_username
+            history_analysis: HistoryAnalysisResult = await self.history_agent.analyze(
+                change_analysis.changed_files, repo, mr_event.author_username
             )
 
-            # ── Stage 5: Risk scoring (pure computation, synchronous) ──
-            risk = self.risk_agent.calculate(change, dep, history)
+            risk_analysis: RiskAnalysisResult = self.risk_agent.calculate(
+                change_analysis, dependency_analysis, history_analysis
+            )
 
-            # ── Stage 6: Reviewer suggestions ──
-            reviewers = await self.reviewer_agent.suggest(
-                change.changed_files,
-                dep.blast_radius,
+            reviewer_analysis: ReviewerAnalysisResult = await self.reviewer_agent.suggest(
+                change_analysis.changed_files,
+                dependency_analysis.blast_radius,
                 repo,
                 mr_event.author_username,
             )
 
-            # ── Stage 7: AI summary (Claude) ──
-            ai_summary = await self.summary_agent.generate(
-                risk, dep, reviewers, history, mr_event.mr_title
+            ai_summary: str = await self.summary_agent.generate(
+                risk_analysis,
+                dependency_analysis,
+                reviewer_analysis,
+                history_analysis,
+                mr_event.mr_title,
             )
 
-            # ── Stage 8: Save to database ──
-            await self._save_analysis(mr_event, change, dep, history, risk, reviewers, ai_summary)
+            await self._save_analysis(
+                mr_event,
+                change_analysis,
+                dependency_analysis,
+                history_analysis,
+                risk_analysis,
+                reviewer_analysis,
+                ai_summary,
+            )
 
-            # ── Stage 9: Post GitLab comment ──
-            comment = format_comment(risk, dep, reviewers, ai_summary)
+            comment: str = format_comment(
+                risk_analysis, dependency_analysis, reviewer_analysis, ai_summary
+            )
+            
             await self.gitlab.post_mr_comment(
                 mr_event.project_id, mr_event.mr_iid, comment
             )
 
-            # ── Stage 10: Add high-risk label if threshold exceeded ──
-            if risk.score >= settings.risk_block_threshold:
+            if risk_analysis.score >= settings.risk_block_threshold:
                 await self.gitlab.add_labels(
                     mr_event.project_id,
                     mr_event.mr_iid,
                     ["high-risk"],
                 )
 
-            # Log completion
-            duration_ms = (time.time() - start_time) * 1000
+            duration_ms: float = (time.time() - start_time) * 1000
             log_pipeline_complete(
                 mr_event,
-                risk.score,
+                risk_analysis.score,
                 duration_ms,
-                dep.total_affected,
+                dependency_analysis.total_affected,
             )
 
-        except Exception as e:
-            duration_ms = (time.time() - start_time) * 1000
-            log_error(mr_event, "pipeline", e)
+        except Exception as generic_pipeline_error:
+            # Catch-all strictly for the top-level executor; prevents async starvation
+            log_error(mr_event, "pipeline_fatal", generic_pipeline_error)
 
     async def _save_analysis(
-        self, mr_event, change, dep, history, risk, reviewers, ai_summary
+        self,
+        mr_event: MREvent,
+        change_analysis: ChangeAnalysisResult,
+        dependency_analysis: DependencyAnalysisResult,
+        history_analysis: HistoryAnalysisResult,
+        risk_analysis: RiskAnalysisResult,
+        reviewer_analysis: ReviewerAnalysisResult,
+        ai_summary: str,
     ) -> None:
-        """Persist the analysis results to PostgreSQL. Updates if existing."""
+        """
+        Atomic upsert transaction locking analytic results directly into the PostgreSQL persistent layer.
+        """
         try:
-            from sqlalchemy.dialects.postgresql import insert
-            from sqlalchemy import delete
             async with async_session_factory() as session:
-                # Upsert analysis record
                 stmt = insert(MRAnalysis).values(
                     project_gitlab_id=mr_event.project_id,
                     project_namespace=mr_event.project_namespace,
@@ -136,16 +148,16 @@ class AgentOrchestrator:
                     mr_title=mr_event.mr_title,
                     author_username=mr_event.author_username,
                     source_branch=mr_event.source_branch,
-                    risk_score=risk.score,
-                    risk_level=risk.level,
-                    lines_changed=change.lines_added + change.lines_removed,
-                    files_changed=len(change.changed_files),
-                    blast_radius_size=dep.total_affected,
-                    impact_depth=dep.max_impact_depth,
-                    risk_breakdown=risk.breakdown.model_dump(),
-                    blast_radius_data=dep.dependency_graph,
+                    risk_score=risk_analysis.score,
+                    risk_level=risk_analysis.level,
+                    lines_changed=change_analysis.lines_added + change_analysis.lines_removed,
+                    files_changed=len(change_analysis.changed_files),
+                    blast_radius_size=dependency_analysis.total_affected,
+                    impact_depth=dependency_analysis.max_impact_depth,
+                    risk_breakdown=risk_analysis.breakdown.model_dump(),
+                    blast_radius_data=dependency_analysis.dependency_graph,
                     ai_summary=ai_summary,
-                    suggested_reviewers=[r.model_dump() for r in reviewers.reviewers],
+                    suggested_reviewers=[r.model_dump() for r in reviewer_analysis.reviewers],
                 )
 
                 stmt = stmt.on_conflict_do_update(
@@ -167,32 +179,24 @@ class AgentOrchestrator:
                     }
                 ).returning(MRAnalysis.id)
 
-                result = await session.execute(stmt)
-                analysis_id = result.scalar_one()
-                
-                # We need a dummy object for the next lines that use analysis.id
-                class DummyAnalysis:
-                    pass
-                analysis = DummyAnalysis()
-                analysis.id = analysis_id
+                db_result = await session.execute(stmt)
+                analysis_id: int = db_result.scalar_one()
 
-                # Delete old file history for this analysis if updating
                 await session.execute(
-                    delete(FileRiskHistory).where(FileRiskHistory.analysis_id == analysis.id)
+                    delete(FileRiskHistory).where(FileRiskHistory.analysis_id == analysis_id)
                 )
 
-                # Save file-level risk history
-                for file_path in change.changed_files:
+                for file_path in change_analysis.changed_files:
                     file_history = FileRiskHistory(
                         project_gitlab_id=mr_event.project_id,
                         file_path=file_path,
-                        analysis_id=analysis.id,
-                        churn_score=history.churn_scores.get(file_path, 0),
-                        incident_count=history.incident_counts.get(file_path, 0),
+                        analysis_id=analysis_id,
+                        churn_score=history_analysis.churn_scores.get(file_path, 0),
+                        incident_count=history_analysis.incident_counts.get(file_path, 0),
                     )
                     session.add(file_history)
 
                 await session.commit()
 
-        except Exception as e:
-            log_error(mr_event, "database_save", e)
+        except Exception as db_error:
+            log_error(mr_event, "database_upsert_failure", db_error)

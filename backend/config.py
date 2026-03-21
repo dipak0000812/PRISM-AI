@@ -1,13 +1,18 @@
 """
-PRISM Configuration — pydantic-settings based config loading from .env
+PRISM Configuration — Immutable environment bindings via Pydantic Settings.
 """
-from pydantic_settings import BaseSettings
-from pydantic import Field
 from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables and .env file."""
+    """
+    Core configuration matrix. 
+    Defines the exact required keys for the PRISM pipeline to boot securely.
+    Fails fast if gitlab_pat or webhook_secret are missing to prevent silent auth drops.
+    """
 
     gitlab_pat: str = Field(..., description="GitLab Personal Access Token with api + ai_features scope")
     groq_api_key: str = Field(default="", description="Groq API key for Llama 3.3")
@@ -27,6 +32,10 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
+    """
+    Instantiates and caches the settings singleton.
+    Guarantees environment variables are only parsed once during the application lifecycle.
+    """
     return Settings()
 
 

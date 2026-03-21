@@ -1,6 +1,10 @@
 """
-PRISM Webhook Router — GitLab MR event receiver.
+PRISM Webhook Router — Edge-layer handler mapping external GitLab events strictly to internal pipeline states.
 """
+import json
+import httpx
+from typing import Any
+
 from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 
 from config import settings
@@ -13,54 +17,44 @@ router = APIRouter(prefix="/webhook", tags=["webhook"])
 
 
 @router.post("/gitlab")
-async def gitlab_webhook(request: Request, background_tasks: BackgroundTasks):
-    """Receive and process GitLab MR webhook events.
-    
-    1. Validate X-Gitlab-Token header
-    2. Parse JSON body
-    3. Filter for merge_request open events only
-    4. Extract MREvent
-    5. Fire-and-forget pipeline in background
-    6. Return 200 immediately
+async def gitlab_webhook(request: Request, background_tasks: BackgroundTasks) -> dict[str, Any]:
     """
-    # Step 1: Get raw body
-    body = await request.body()
+    Edge entrypoint for all GitLab MR webhooks.
+    This route mandates an immediate 200 OK return to prevent GitLab from severing the webhook integration.
+    All intensive graph and LLM operations are decoupled into the BackgroundTasks loop.
+    """
+    raw_body: bytes = await request.body()
+    gitlab_token: str = request.headers.get("X-Gitlab-Token", "")
 
-    # Step 2: Validate webhook token
-    token = request.headers.get("X-Gitlab-Token", "")
-    if not validate_gitlab_signature(body, token, settings.webhook_secret):
-        raise HTTPException(status_code=401, detail="Invalid webhook token")
+    if not validate_gitlab_signature(raw_body, gitlab_token, settings.webhook_secret):
+        raise HTTPException(status_code=401, detail="Invalid computing signature; refusing webhook ingestion.")
 
-    # Step 3: Parse JSON
     try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        mr_payload: dict[str, Any] = await request.json()
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail="Malformed JSON in webhook request body.") from e
     
-    # Step 4: Only process merge_request open events
-    object_kind = payload.get("object_kind", "")
+    object_kind: str = mr_payload.get("object_kind", "")
     if object_kind != "merge_request":
-        return {"status": "ignored", "reason": f"object_kind={object_kind}"}
+        return {"status": "ignored", "reason": f"Expected merge_request format but received {object_kind}"}
 
-    object_attributes = payload.get("object_attributes", {})
-    action = object_attributes.get("action", "")
+    object_attributes: dict[str, Any] = mr_payload.get("object_attributes", {})
+    action: str = object_attributes.get("action", "")
     if action not in ("open", "reopen"):
-        return {"status": "ignored", "reason": f"action={action}"}
+        return {"status": "ignored", "reason": f"MREvent action {action} does not trigger analysis cycles"}
 
-    # Step 5: Extract MREvent from payload
-    project = payload.get("project", {})
-    user = payload.get("user", {})
+    project: dict[str, Any] = mr_payload.get("project", {})
+    user: dict[str, Any] = mr_payload.get("user", {})
 
-    # Resolve author username — try user block first, then fetch via API
-    author_username = user.get("username", "")
-    author_id = object_attributes.get("author_id", 0)
+    author_username: str = user.get("username", "")
+    author_id: int = object_attributes.get("author_id", 0)
 
     if not author_username and author_id:
         try:
-            gitlab = GitLabService()
-            user_data = await gitlab.get_user_by_id(author_id)
+            gitlab_client = GitLabService()
+            user_data: dict[str, Any] = await gitlab_client.get_user_by_id(author_id)
             author_username = user_data.get("username", "unknown")
-        except Exception:
+        except httpx.HTTPError:
             author_username = "unknown"
 
     mr_event = MREvent(
@@ -75,9 +69,7 @@ async def gitlab_webhook(request: Request, background_tasks: BackgroundTasks):
         author_id=author_id,
     )
 
-    # Step 6: Fire-and-forget — run pipeline in background
     orchestrator = AgentOrchestrator()
     background_tasks.add_task(orchestrator.run_pipeline, mr_event)
 
-    # Step 7: Return immediately so GitLab doesn't timeout
     return {"status": "accepted", "mr_iid": mr_event.mr_iid}

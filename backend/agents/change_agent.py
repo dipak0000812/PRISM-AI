@@ -1,5 +1,5 @@
 """
-PRISM Change Agent — Diff extraction, file categorization, and module analysis.
+PRISM Change Agent — Granular diff parsing and structural volatility heuristics.
 """
 import asyncio
 import os
@@ -9,86 +9,77 @@ from typing import Any
 
 import git
 
-from models.schemas import MREvent, ChangeResult
+from models.schemas import ChangeAnalysisResult, MREvent
 from services.gitlab_service import GitLabService
 
-
-# Module classification patterns
-CRITICAL_MODULES = ["auth", "payment", "security", "billing", "oauth"]
-CORE_MODULES = ["core", "base", "common", "middleware", "shared"]
-TEST_PATTERNS = [r"test_", r"_test\.", r"/tests/", r"\\tests\\", r"_test_"]
+CRITICAL_MODULES: frozenset[str] = frozenset({"auth", "payment", "security", "billing", "oauth"})
+CORE_MODULES: frozenset[str] = frozenset({"core", "base", "common", "middleware", "shared"})
+TEST_PATTERNS: tuple[str, ...] = (r"test_", r"_test\.", r"/tests/", r"\\tests\\", r"_test_")
 
 
 class ChangeAgent:
-    """Analyzes MR diffs to extract changed files, module classification, and author stats."""
+    """
+    Stateless intelligence layer deducing architectural scope purely from git diff strings.
+    Extracts module context without requiring full symbolic compilation.
+    """
 
     def __init__(self) -> None:
         self.gitlab = GitLabService()
 
-    async def analyze(self, mr_event: MREvent, repo: git.Repo) -> ChangeResult:
-        """Full change analysis: fetch diffs, classify files, compute stats."""
+    async def analyze(self, mr_event: MREvent, repo: git.Repo) -> ChangeAnalysisResult:
+        """
+        Derive high-level volatility metrics natively from GitLab unified diffs.
+        """
+        diffs: list[dict[str, Any]] = await self.gitlab.get_mr_diffs(mr_event.project_id, mr_event.mr_iid)
 
-        # Step 1: Fetch MR diffs from GitLab API
-        diffs = await self.gitlab.get_mr_diffs(mr_event.project_id, mr_event.mr_iid)
-
-        # Step 2: Extract changed file paths
         changed_files: list[str] = []
-        lines_added = 0
-        lines_removed = 0
+        lines_added: int = 0
+        lines_removed: int = 0
 
         for diff_item in diffs:
-            file_path = diff_item.get("new_path") or diff_item.get("old_path", "")
+            file_path: str = diff_item.get("new_path") or diff_item.get("old_path", "")
             if file_path and file_path not in changed_files:
                 changed_files.append(file_path)
 
-            # Count line changes from the diff content
-            diff_text = diff_item.get("diff", "")
+            diff_text: str = diff_item.get("diff", "")
             for line in diff_text.split("\n"):
                 if line.startswith("+") and not line.startswith("+++"):
                     lines_added += 1
                 elif line.startswith("-") and not line.startswith("---"):
                     lines_removed += 1
 
-        # Step 3: Map files to modules (first directory component)
         modules_touched: list[str] = []
-        for f in changed_files:
-            parts = f.replace("\\", "/").split("/")
-            if len(parts) > 1:
-                module = parts[0]
-            else:
-                module = "root"
+        for file in changed_files:
+            parts: list[str] = file.replace("\\", "/").split("/")
+            module: str = parts[0] if len(parts) > 1 else "root"
             if module not in modules_touched:
                 modules_touched.append(module)
 
-        # Step 4: Detect critical modules
-        touches_critical = any(
-            any(crit in f.lower() for crit in CRITICAL_MODULES)
-            for f in changed_files
+        touches_critical: bool = any(
+            any(crit in file.lower() for crit in CRITICAL_MODULES)
+            for file in changed_files
         )
 
-        # Step 5: Detect core modules
-        touches_core = any(
-            any(core in f.lower() for core in CORE_MODULES)
-            for f in changed_files
+        touches_core: bool = any(
+            any(core in file.lower() for core in CORE_MODULES)
+            for file in changed_files
         )
 
-        # Step 6: Detect test files
-        test_files_in_change = [
-            f for f in changed_files
-            if any(re.search(pat, f, re.IGNORECASE) for pat in TEST_PATTERNS)
+        test_files_in_change: list[str] = [
+            file for file in changed_files
+            if any(re.search(pat, file, re.IGNORECASE) for pat in TEST_PATTERNS)
         ]
 
-        # Step 7: Tests added / removed
-        tests_added = False
-        tests_removed = 0
+        tests_added: bool = False
+        tests_removed: int = 0
 
         for diff_item in diffs:
-            new_path = diff_item.get("new_path", "")
-            old_path = diff_item.get("old_path", "")
-            is_new_file = diff_item.get("new_file", False)
-            is_deleted = diff_item.get("deleted_file", False)
+            new_path: str = diff_item.get("new_path", "")
+            old_path: str = diff_item.get("old_path", "")
+            is_new_file: bool = diff_item.get("new_file", False)
+            is_deleted: bool = diff_item.get("deleted_file", False)
 
-            is_test_file = any(
+            is_test_file: bool = any(
                 re.search(pat, new_path or old_path, re.IGNORECASE)
                 for pat in TEST_PATTERNS
             )
@@ -99,16 +90,14 @@ class ChangeAgent:
                 if is_deleted:
                     tests_removed += 1
 
-        # If no test files were explicitly added as new, check if test content was added
         if not tests_added and test_files_in_change:
             tests_added = True
 
-        # Step 8: Author module commit count (run in executor — blocking git op)
-        author_module_commits = await self._count_author_module_commits(
+        author_module_commits: int = await self._count_author_module_commits(
             repo, mr_event.author_username, modules_touched
         )
 
-        return ChangeResult(
+        return ChangeAnalysisResult(
             changed_files=changed_files,
             lines_added=lines_added,
             lines_removed=lines_removed,
@@ -126,8 +115,10 @@ class ChangeAgent:
         author_username: str,
         modules: list[str],
     ) -> int:
-        """Count how many commits the MR author has made to the touched modules."""
-        loop = asyncio.get_event_loop()
+        """
+        Thread-pool bound execution resolving the engineer's historical footprint in touched modules.
+        """
+        loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
             self._count_author_module_commits_sync,
@@ -142,27 +133,32 @@ class ChangeAgent:
         author_username: str,
         modules: list[str],
     ) -> int:
-        """Synchronous git log scan for author commits to modules."""
-        count = 0
-        since = datetime.now() - timedelta(days=180)
+        """
+        Synchronous loop parsing localized git metadata for experience correlation.
+        Fails safely on corrupted local repositories to prevent total pipeline blockage.
+        """
+        count: int = 0
+        since: datetime = datetime.now() - timedelta(days=180)
 
         try:
             for commit in repo.iter_commits(
                 repo.head.ref, since=since.isoformat(), max_count=500
             ):
-                author_name = commit.author.name or ""
-                author_email = commit.author.email or ""
+                author_name: str = commit.author.name or ""
+                author_email: str = commit.author.email or ""
 
                 if (
                     author_username.lower() in author_name.lower()
                     or author_username.lower() in author_email.lower()
                 ):
-                    for f in commit.stats.files:
-                        parts = f.replace("\\", "/").split("/")
-                        file_module = parts[0] if len(parts) > 1 else "root"
+                    for stat_file in commit.stats.files:
+                        parts: list[str] = stat_file.replace("\\", "/").split("/")
+                        file_module: str = parts[0] if len(parts) > 1 else "root"
                         if file_module in modules:
                             count += 1
                             break
+        except git.exc.GitCommandError:
+            pass
         except Exception:
             pass
 

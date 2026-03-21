@@ -1,60 +1,67 @@
 "use client";
 
 import Link from "next/link";
-import { Github } from "lucide-react";
+import { Github, Twitter, Linkedin, Youtube, Activity } from "lucide-react";
+import { motion } from "framer-motion";
 
 const LINKS = {
-  Product: ["Features", "Integrations", "Changelog", "Pricing"],
-  Resources: ["Documentation", "API Reference", "Community", "Status"],
-  Team: ["About Us", "Blog", "GitLab Hackathon", "Open Source"],
+  Features: ["Risk Analysis", "Blast Radius", "AI Summaries", "Dashboard", "CI/CD Integration", "Webhooks"],
+  Resources: ["Changelog", "Pricing", "Security", "SOC 2", "GDPR", "Brand"],
+  Company: ["About", "Blog", "Careers", "Customers", "Humans", "Philosophy"],
+  Help: ["Contact", "Support", "Status", "Migrate", "Knowledge Base", "Legal Policies"],
+  Community: ["Events", "Insiders", "Open Source", "Wallpapers"],
 };
 
 export function Footer() {
   return (
-    <footer
-      className="px-8 md:px-16 pt-20 pb-10"
-      style={{ borderTop: "1px solid #1f1f24" }}
-    >
+    <footer className="px-8 md:px-16 pt-24 pb-12 bg-black">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between gap-16">
-          {/* Brand */}
-          <div className="flex flex-col gap-5 max-w-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-indigo-400 text-lg">◈</span>
-              <span className="text-white font-semibold tracking-tight">PRISM</span>
+        <div className="flex flex-col lg:flex-row justify-between gap-16 lg:gap-24">
+          
+          {/* Left Column - Address, Socials, Status */}
+          <div className="flex flex-col gap-8 max-w-[240px]">
+            <Link href="/" className="flex items-center gap-2 group">
+              <span className="text-white text-xl font-semibold tracking-tight">
+                <span className="text-indigo-400">◈</span> PRISM
+              </span>
+            </Link>
+
+            <div className="text-[14px] text-zinc-500 leading-[1.6]">
+              SF Hackers Space<br />
+              San Francisco, CA 94103
             </div>
-            <p className="text-[14px] leading-[1.7]" style={{ color: "#71717a" }}>
-              Autonomous risk intelligence for GitLab merge requests. Built for the GitLab AI
-              Hackathon 2026.
-            </p>
-            <Link
-              href="https://gitlab.com/Dipak_09/prism-ai"
-              target="_blank"
-              className="flex items-center gap-2 text-[13px] hover:text-white transition-colors duration-150"
-              style={{ color: "#52525b" }}
-            >
-              <Github className="w-3.5 h-3.5" />
-              View on GitLab
+
+            <div className="flex items-center gap-3">
+              {[Twitter, Github, Linkedin, Youtube].map((Icon, i) => (
+                <Link
+                  key={i}
+                  href="#"
+                  className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors"
+                >
+                  <Icon className="w-4 h-4" />
+                </Link>
+              ))}
+            </div>
+
+            <Link href="#" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 transition-colors w-max">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+              <span className="text-[12px] font-medium text-zinc-300">All systems operational</span>
             </Link>
           </div>
 
-          {/* Links grid */}
-          <div className="grid grid-cols-3 gap-12">
+          {/* Right Columns - Links */}
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-12">
             {Object.entries(LINKS).map(([section, items]) => (
-              <div key={section} className="flex flex-col gap-5">
-                <h4
-                  className="text-[12px] font-medium"
-                  style={{ color: "#ffffff" }}
-                >
+              <div key={section} className="flex flex-col gap-6">
+                <h4 className="text-[14px] font-medium text-white">
                   {section}
                 </h4>
-                <div className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-4">
                   {items.map((item) => (
                     <Link
                       key={item}
                       href="#"
-                      className="text-[14px] hover:text-white transition-colors duration-150"
-                      style={{ color: "#71717a" }}
+                      className="text-[14px] text-zinc-400 hover:text-white transition-colors duration-150"
                     >
                       {item}
                     </Link>
@@ -63,19 +70,6 @@ export function Footer() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div
-          className="mt-16 pt-8 flex flex-col md:flex-row items-center justify-between gap-4"
-          style={{ borderTop: "1px solid #1f1f24" }}
-        >
-          <p className="text-[13px]" style={{ color: "#52525b" }}>
-            Built by Tech_Exchangers · GitLab AI Hackathon 2026
-          </p>
-          <p className="text-[13px]" style={{ color: "#52525b" }}>
-            © 2026 PRISM · All rights reserved
-          </p>
         </div>
       </div>
     </footer>

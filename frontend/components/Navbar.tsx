@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Shield, LayoutDashboard, GitMerge, Share2, Settings } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -14,10 +15,16 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const user = session?.user;
+
+  const colors = ['#5b8af5', '#e24329', '#30a46c', '#f59e0b', '#8b5cf6'];
+  const colorIndex = (user?.name?.charCodeAt(0) || 0) % colors.length;
+  const avatarColor = colors[colorIndex];
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-10 py-5 bg-black/60 backdrop-blur-xl border-b border-zinc-900/80">
-      <div className="flex items-center gap-4 group cursor-pointer">
+      <Link href="/dashboard" className="flex items-center gap-4 group cursor-pointer">
         <div className="relative flex items-center justify-center w-10 h-10 bg-white rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform duration-500">
           <Shield className="w-6 h-6 text-black" strokeWidth={2.5} />
           <div className="absolute inset-0 bg-white blur-lg opacity-0 group-hover:opacity-30 transition-opacity" />
@@ -28,7 +35,7 @@ export function Navbar() {
             Risk Intelligence
           </span>
         </div>
-      </div>
+      </Link>
 
       <div className="flex items-center gap-8">
         {NAV_ITEMS.map((item) => {
@@ -64,21 +71,22 @@ export function Navbar() {
              <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Operational</span>
           </div>
         </div>
-        <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[11px] font-black text-white hover:border-zinc-700 transition-colors cursor-pointer shadow-inner">
-          JD
+
+        <div className="flex items-center gap-4 border-l border-zinc-800 pl-6">
+          <div 
+            className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold text-white shadow-inner"
+            style={{ backgroundColor: avatarColor || '#27272a' }}
+            title={user?.name || user?.email || "User"}
+          >
+            {(user?.name || user?.email || "U").charAt(0).toUpperCase()}
+          </div>
+          <button 
+            onClick={() => signOut({ callbackUrl: '/' })}
+            className="text-[11px] font-black uppercase tracking-widest text-white/70 hover:text-white px-3 py-1.5 rounded-md hover:bg-white/10 transition-all cursor-pointer"
+          >
+            Sign out
+          </button>
         </div>
-        <button 
-          onClick={() => {
-            localStorage.removeItem("prism_auth");
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            // Force hard redirect to ensure all states are cleared
-            window.location.href = "/";
-          }}
-          className="text-[11px] font-black uppercase tracking-widest text-white/70 hover:text-white px-3 py-1.5 rounded-md hover:bg-white/10 transition-all cursor-pointer"
-        >
-          Logout
-        </button>
       </div>
     </nav>
   );
