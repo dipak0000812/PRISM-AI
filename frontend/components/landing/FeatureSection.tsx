@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LucideIcon, ChevronRight } from "lucide-react";
+import { LucideIcon } from "lucide-react";
 
 interface FeatureSectionProps {
   title: string;
@@ -12,46 +12,77 @@ interface FeatureSectionProps {
   children: React.ReactNode;
 }
 
-export function FeatureSection({ title, badge, description, icon: Icon, reverse, children }: FeatureSectionProps) {
+export function FeatureSection({
+  title,
+  badge,
+  description,
+  icon: Icon,
+  reverse,
+  children,
+}: FeatureSectionProps) {
   return (
-    <section className="py-40 bg-zinc-950 overflow-hidden">
-      <div className={`max-w-7xl mx-auto px-6 flex flex-col items-center gap-20 ${reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'}`}>
-        <div className="flex-1 max-w-xl">
+    <section className="py-32 overflow-hidden">
+      <div
+        className={`max-w-6xl mx-auto px-6 flex flex-col items-center gap-20 ${
+          reverse ? "lg:flex-row-reverse" : "lg:flex-row"
+        }`}
+      >
+        {/* Text column */}
+        <div className="flex-1 max-w-lg">
           <motion.div
-            initial={{ opacity: 0, x: reverse ? 30 : -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="flex flex-col gap-8"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="flex flex-col gap-6"
           >
+            {/* Badge */}
             <div className="flex items-center gap-3">
-               <div className="p-2.5 bg-white/5 border border-white/10 rounded-xl group hover:border-white/20 transition-all">
-                  <Icon className="w-5 h-5 text-indigo-400" />
-               </div>
-               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">{badge}</span>
+              <div
+                className="p-2 rounded-lg"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <Icon className="w-4 h-4 text-indigo-400" />
+              </div>
+              <span
+                className="text-[12px] font-medium uppercase tracking-widest"
+                style={{ color: "#52525b" }}
+              >
+                {badge}
+              </span>
             </div>
 
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter leading-[1.05]">
+            {/* Heading */}
+            <h2
+              className="font-semibold text-white leading-[1.1]"
+              style={{
+                fontSize: "clamp(32px, 4vw, 44px)",
+                letterSpacing: "-0.02em",
+              }}
+            >
               {title}
             </h2>
 
-            <p className="text-lg font-medium text-zinc-500 leading-relaxed mb-6">
+            {/* Description */}
+            <p
+              className="text-[16px] leading-[1.7]"
+              style={{ color: "#71717a" }}
+            >
               {description}
             </p>
-
-            <button className="self-start group flex items-center gap-3 px-8 py-4 bg-zinc-900/50 border border-zinc-900 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:border-zinc-700/50 transition-all active:scale-95">
-              Read More
-              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-            </button>
           </motion.div>
         </div>
 
-        <div className="flex-1 w-full max-w-3xl">
+        {/* Visual column */}
+        <div className="flex-1 w-full max-w-2xl">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, x: reverse ? -50 : 50 }}
-            whileInView={{ opacity: 1, scale: 1, x: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
             className="w-full"
           >
             {children}

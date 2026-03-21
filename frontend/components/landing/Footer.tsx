@@ -1,65 +1,82 @@
 "use client";
 
 import Link from "next/link";
-import { Shield, Github, Twitter, Linkedin } from "lucide-react";
+import { Github } from "lucide-react";
+
+const LINKS = {
+  Product: ["Features", "Integrations", "Changelog", "Pricing"],
+  Resources: ["Documentation", "API Reference", "Community", "Status"],
+  Team: ["About Us", "Blog", "GitLab Hackathon", "Open Source"],
+};
 
 export function Footer() {
   return (
-    <footer className="py-24 bg-black border-t border-zinc-900 px-8 md:px-16">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-20">
-        <div className="flex flex-col gap-6 max-w-xs">
-          <div className="flex items-center gap-3">
-             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                <Shield className="w-5 h-5 text-black" strokeWidth={3} />
-             </div>
-             <span className="text-xl font-bold tracking-tighter text-white uppercase">Prism</span>
+    <footer
+      className="px-8 md:px-16 pt-20 pb-10"
+      style={{ borderTop: "1px solid #1f1f24" }}
+    >
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between gap-16">
+          {/* Brand */}
+          <div className="flex flex-col gap-5 max-w-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-indigo-400 text-lg">◈</span>
+              <span className="text-white font-semibold tracking-tight">PRISM</span>
+            </div>
+            <p className="text-[14px] leading-[1.7]" style={{ color: "#71717a" }}>
+              Autonomous risk intelligence for GitLab merge requests. Built for the GitLab AI
+              Hackathon 2026.
+            </p>
+            <Link
+              href="https://gitlab.com/Dipak_09/prism-ai"
+              target="_blank"
+              className="flex items-center gap-2 text-[13px] hover:text-white transition-colors duration-150"
+              style={{ color: "#52525b" }}
+            >
+              <Github className="w-3.5 h-3.5" />
+              View on GitLab
+            </Link>
           </div>
-          <p className="text-sm font-medium text-zinc-600 leading-relaxed">
-             Next-generation risk intelligence platform providing forensic analysis for modern engineering teams. Built with precision and speed.
-          </p>
-          <div className="flex items-center gap-4 mt-2">
-             <Link href="#" className="p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-all"><Github className="w-4 h-4" /></Link>
-             <Link href="#" className="p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-all"><Twitter className="w-4 h-4 fill-current" /></Link>
-             <Link href="#" className="p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-500 hover:text-white transition-all"><Linkedin className="w-4 h-4" /></Link>
+
+          {/* Links grid */}
+          <div className="grid grid-cols-3 gap-12">
+            {Object.entries(LINKS).map(([section, items]) => (
+              <div key={section} className="flex flex-col gap-5">
+                <h4
+                  className="text-[12px] font-medium"
+                  style={{ color: "#ffffff" }}
+                >
+                  {section}
+                </h4>
+                <div className="flex flex-col gap-3.5">
+                  {items.map((item) => (
+                    <Link
+                      key={item}
+                      href="#"
+                      className="text-[14px] hover:text-white transition-colors duration-150"
+                      style={{ color: "#71717a" }}
+                    >
+                      {item}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-16">
-          <div className="flex flex-col gap-6">
-             <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Product</h4>
-             <div className="flex flex-col gap-4">
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Features</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Integrations</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Security</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Pricing</Link>
-             </div>
-          </div>
-          <div className="flex flex-col gap-6">
-             <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Resources</h4>
-             <div className="flex flex-col gap-4">
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Documentation</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">API Reference</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Community</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Status</Link>
-             </div>
-          </div>
-          <div className="flex flex-col gap-6">
-             <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Company</h4>
-             <div className="flex flex-col gap-4">
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">About Us</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Blog</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Careers</Link>
-                <Link href="#" className="text-sm font-bold text-zinc-600 hover:text-white transition-colors">Privacy</Link>
-             </div>
-          </div>
+        {/* Bottom bar */}
+        <div
+          className="mt-16 pt-8 flex flex-col md:flex-row items-center justify-between gap-4"
+          style={{ borderTop: "1px solid #1f1f24" }}
+        >
+          <p className="text-[13px]" style={{ color: "#52525b" }}>
+            Built by Tech_Exchangers · GitLab AI Hackathon 2026
+          </p>
+          <p className="text-[13px]" style={{ color: "#52525b" }}>
+            © 2026 PRISM · All rights reserved
+          </p>
         </div>
-      </div>
-      <div className="max-w-7xl mx-auto mt-32 pt-12 border-t border-zinc-900/50 flex flex-col md:flex-row justify-between items-center gap-6">
-         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700">© 2026 PRISM INTELLIGENCE. ALL RIGHTS RESERVED.</p>
-         <div className="flex items-center gap-8">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700 hover:text-white transition-colors cursor-pointer">Terms of Service</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700 hover:text-white transition-colors cursor-pointer">Cookie Policy</span>
-         </div>
       </div>
     </footer>
   );
