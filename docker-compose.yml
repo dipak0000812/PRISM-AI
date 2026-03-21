@@ -35,15 +35,26 @@ services:
       postgres:
         condition: service_healthy
 
-  # ── Frontend (Next.js) — uncomment when frontend Dockerfile is ready ──
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
+  # ── Frontend (Next.js) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITLAB_CLIENT_ID=${GITLAB_CLIENT_ID}
+      - GITLAB_CLIENT_SECRET=${GITLAB_CLIENT_SECRET}
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   pg-data:

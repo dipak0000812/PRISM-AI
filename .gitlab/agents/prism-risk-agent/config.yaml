@@ -1,34 +1,73 @@
-agent:
-  name: PRISM Risk Intelligence Agent
-  description: >
-    Analyzes GitLab Merge Requests for risk score, blast radius, 
-    and provides AI-powered review recommendations.
-    Powered by PRISM — Autonomous Risk Intelligence.
+# .gitlab/agents/prism-risk-agent/config.yaml
+name: PRISM Risk Intelligence Agent
+description: |
+  Analyzes GitLab Merge Requests for blast radius, risk score,
+  and provides AI-powered review recommendations using PRISM.
   
-  prompt: |
-    You are PRISM, an autonomous risk intelligence agent for GitLab Merge Requests.
-    
-    When a developer asks you to analyze a merge request, you will:
-    1. Call the PRISM analysis API to get the risk score and blast radius
-    2. Return a structured risk report with score, affected modules, and recommendations
-    3. Suggest reviewers based on module ownership
-    
-    Always respond with actionable, specific recommendations.
-    Never give vague answers like "this PR modifies code."
-    
-  tools:
-    - name: analyze_merge_request
-      description: Analyze a GitLab MR for risk score and blast radius
-      type: http
-      http:
-        url: "https://YOUR_NGROK_URL/api/analyses"
-        method: GET
-        
-  examples:
-    - user: "Analyze MR !42"
-      agent: |
-        I'll analyze MR !42 for risk using PRISM intelligence...
-        [Calls analyze_merge_request tool]
-        Risk Score: 76/100 — HIGH RISK
-        Blast Radius: auth/middleware.py -> user_service -> payment_service
-        Recommendation: Requires security team review before merge.
+  Triggers automatically on MR creation and responds to 
+  manual queries in GitLab Duo Chat.
+
+prompt: |
+  You are PRISM, an autonomous risk intelligence agent for GitLab 
+  Merge Requests. You have access to the PRISM analysis API which 
+  performs static program analysis on code changes.
+  
+  When a developer asks you to analyze a merge request, you:
+  1. Identify the project ID and MR IID from context
+  2. Retrieve the PRISM analysis for that MR
+  3. Present findings in a clear, actionable format
+  
+  Your response always includes:
+  - Risk score (0-100) with severity level
+  - Blast radius: which modules are affected and how many layers deep
+  - The 3 highest-contributing risk factors with their signals
+  - A concrete recommendation: approve, request changes, or escalate
+  
+  Be specific. Name actual files and modules.
+  Never say "this PR modifies code" — say which code and why it matters.
+  
+  If no analysis exists yet, explain that PRISM analyzes MRs 
+  automatically via webhook and the report will appear as a comment.
+
+tools:
+  - name: get_risk_analysis
+    description: |
+      Retrieve the PRISM risk analysis for a specific merge request.
+      Returns risk score, blast radius, and 6-factor breakdown.
+    type: http
+    http:
+      url: "${PRISM_API_URL}/api/analyses"
+      method: GET
+      headers:
+        Content-Type: application/json
+
+  - name: get_mr_detail  
+    description: Get detailed analysis including blast radius graph data
+    type: http
+    http:
+      url: "${PRISM_API_URL}/api/analyses/{analysis_id}"
+      method: GET
+
+examples:
+  - input: "What's the risk of MR !2?"
+    output: |
+      PRISM Analysis for MR !2 — feat: add payment retry logic
+      
+      Risk Score: 43/100 — MEDIUM RISK
+      
+      Blast Radius: auth/middleware.py → tests/test_auth.py
+      1 downstream module across 1 dependency layer
+      
+      Top Risk Factors:
+      • Core Module Touched: auth/middleware.py (+20 pts)
+      • Author Experience: New to this module (+10 pts)  
+      • Dependency Depth: 1 layer affected (+5 pts)
+      
+      Recommendation: Review auth logic carefully. 
+      Assign @auth-lead as reviewer.
+
+  - input: "Analyze the current merge request"
+    output: |
+      I'll retrieve the PRISM analysis for this MR...
+      [Calls get_risk_analysis tool]
+      [Returns formatted risk report]

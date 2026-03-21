@@ -1,10 +1,10 @@
 """
-PRISM Dependency Agent — Native Tree-Sitter AST parsers calculating cross-module blast radiuses.
+PRISM Dependency Agent — Native Tree-Sitter AST parsers and JS imports calculating cross-module blast radiuses.
 """
 import asyncio
-import glob
 import os
 import re
+from pathlib import Path
 
 import networkx as nx
 import tree_sitter_python as tspython
@@ -14,6 +14,8 @@ from config import settings
 from models.schemas import DependencyAnalysisResult
 
 PY_LANGUAGE: Language = Language(tspython.language(), "python")
+
+SUPPORTED_EXTENSIONS = {'.py', '.js', '.ts', '.jsx', '.tsx'}
 
 
 def _create_python_parser() -> Parser:
@@ -26,7 +28,6 @@ def _create_python_parser() -> Parser:
 def extract_imports_python(file_path: str) -> list[str]:
     """
     Statically mine Python imports via AST traversal.
-    Far superior to regex; guarantees accurate resolution of deeply nested aliases and relative targets.
     """
     parser: Parser = _create_python_parser()
 
@@ -70,50 +71,97 @@ def extract_imports_python(file_path: str) -> list[str]:
 
 def extract_imports_javascript(file_path: str) -> list[str]:
     """
-    Fallback regex scanner for standard JS/TS environments.
-    Less pristine than AST parsing, but effectively captures ESM and CommonJS exports cleanly.
+    Extract ES module imports and CommonJS requires from JS/TS files.
+    Uses regex as fallback since tree-sitter-javascript may not be installed.
+    Handles: import x from 'y', import {x} from 'y', require('y')
     """
-    imports: list[str] = []
-
     try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as file_stream:
-            content: str = file_stream.read()
-    except (OSError, IOError):
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            source = f.read()
+    except OSError:
         return []
-
-    pattern_import = re.compile(
-        r"""import\s+(?:.*?\s+from\s+)?['"]([^'"]+)['"]""",
-        re.MULTILINE,
-    )
-    for match in pattern_import.finditer(content):
-        imports.append(match.group(1))
-
-    pattern_require = re.compile(r"""require\s*\(\s*['"]([^'"]+)['"]\s*\)""")
-    for match in pattern_require.finditer(content):
-        imports.append(match.group(1))
-
-    return imports
-
-
-def resolve_import_to_path(import_name: str, repo_path: str) -> str | None:
-    """
-    Map abstract logical import vectors to physical disk locations simulating the Python interpreter loader.
-    """
-    parts: list[str] = import_name.split(".")
     
-    candidate: str = os.path.join(*parts) + ".py"
-    if os.path.isfile(os.path.join(repo_path, candidate)):
-        return candidate.replace("\\", "/")
+    imports = []
+    
+    # ES module imports: import x from './module'
+    es_pattern = re.compile(
+        r"""import\s+(?:.*?\s+from\s+)?['"]([^'"]+)['"]""",
+        re.MULTILINE
+    )
+    imports.extend(es_pattern.findall(source))
+    
+    # CommonJS requires: require('./module')  
+    cjs_pattern = re.compile(
+        r"""require\s*\(\s*['"]([^'"]+)['"]\s*\)""",
+        re.MULTILINE
+    )
+    imports.extend(cjs_pattern.findall(source))
+    
+    # Filter to relative imports only (starting with ./ or ../)
+    return [imp for imp in imports if imp.startswith('.')]
 
-    candidate_init: str = os.path.join(*parts, "__init__.py")
-    if os.path.isfile(os.path.join(repo_path, candidate_init)):
-        return os.path.join(*parts).replace("\\", "/") + "/__init__.py"
 
-    if len(parts) > 1:
-        candidate_partial: str = os.path.join(parts[0]) + ".py"
-        if os.path.isfile(os.path.join(repo_path, candidate_partial)):
-            return candidate_partial.replace("\\", "/")
+def extract_imports_for_file(file_path: str) -> list[str]:
+    """
+    Route to the correct import extractor based on file extension.
+    Supports: .py, .js, .ts, .jsx, .tsx
+    """
+    path = Path(file_path)
+    suffix = path.suffix.lower()
+    
+    if suffix == '.py':
+        return extract_imports_python(file_path)
+    elif suffix in {'.js', '.ts', '.jsx', '.tsx'}:
+        return extract_imports_javascript(file_path)
+    
+    return []
 
+
+def resolve_import_to_path(
+    import_str: str, 
+    repo_path: str, 
+    source_file: str
+) -> str | None:
+    """
+    Resolve a relative import string to a file path within the repo.
+    Handles both Python module paths and JS/TS relative paths.
+    """
+    source_dir = Path(repo_path) / Path(source_file).parent
+    
+    # JS/TS relative imports (./module, ../utils/helper)
+    if import_str.startswith('.'):
+        candidate = (source_dir / import_str).resolve()
+        
+        # Try with common extensions
+        for ext in ['.ts', '.tsx', '.js', '.jsx', '.py', '']:
+            test_path = Path(str(candidate) + ext)
+            if test_path.exists():
+                try:
+                    return str(test_path.relative_to(repo_path)).replace("\\", "/")
+                except ValueError:
+                    return None
+        
+        # Try as directory with index file
+        for index in ['index.ts', 'index.tsx', 'index.js']:
+            test_path = candidate / index
+            if test_path.exists():
+                try:
+                    return str(test_path.relative_to(repo_path)).replace("\\", "/")
+                except ValueError:
+                    return None
+    
+    # Python dotted imports (auth.middleware → auth/middleware.py)
+    else:
+        py_path = Path(repo_path) / Path(import_str.replace('.', '/'))
+        
+        for suffix in ['.py', '/__init__.py']:
+            test_path = Path(str(py_path) + suffix)
+            if test_path.exists():
+                try:
+                    return str(test_path.relative_to(repo_path)).replace("\\", "/")
+                except ValueError:
+                    return None
+    
     return None
 
 
@@ -121,20 +169,26 @@ def build_dependency_graph(repo_path: str) -> nx.DiGraph:
     """
     Sweep the materialized filesystem and forge the global directed application network mapping components to consumers.
     """
-    directed_graph = nx.DiGraph()
-    py_files: list[str] = glob.glob(os.path.join(repo_path, "**", "*.py"), recursive=True)
-
-    for py_file in py_files:
-        rel_path: str = os.path.relpath(py_file, repo_path).replace("\\", "/")
-        directed_graph.add_node(rel_path)
-
-        imports: list[str] = extract_imports_python(py_file)
-        for imp in imports:
-            resolved: str | None = resolve_import_to_path(imp, repo_path)
-            if resolved and resolved != rel_path:
-                directed_graph.add_edge(rel_path, resolved)
-
-    return directed_graph
+    G = nx.DiGraph()
+    
+    for ext in SUPPORTED_EXTENSIONS:
+        for source_file in Path(repo_path).rglob(f'*{ext}'):
+            # Skip node_modules, .git, __pycache__, dist, build
+            if any(part in source_file.parts for part in {
+                'node_modules', '.git', '__pycache__', 
+                'dist', 'build', '.next', 'venv', '.venv'
+            }):
+                continue
+                
+            rel_path = str(source_file.relative_to(repo_path)).replace("\\", "/")
+            G.add_node(rel_path)
+            
+            for imp in extract_imports_for_file(str(source_file)):
+                resolved = resolve_import_to_path(imp, repo_path, rel_path)
+                if resolved and resolved != rel_path:
+                    G.add_edge(rel_path, resolved)
+    
+    return G
 
 
 class DependencyAgent:

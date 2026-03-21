@@ -147,6 +147,6 @@ PRISM exposes a strictly structured RESTful pipeline over FastAPI.
 ---
 
 ## 🏅 Team & Hackathon Context
-**Team:** Tech_Exchangers
+**Team:** ZerothLayer
 **Submission:** GitLab AI Hackathon 2026 
 **Goals:** To introduce enterprise-grade code intelligence seamlessly into the merge workflow, eliminating speculative review assignments and fundamentally ending blind production failures. 

@@ -1,87 +1,115 @@
 """
-PRISM GitLab Service — Robust asynchronous bridge to the GitLab API ecosystem.
+PRISM GitLab Service — Robust asynchronous external networking and webhook coordination wrapper.
 """
-from typing import Any
-
 import httpx
 
 from config import settings
-from models.schemas import DependencyAnalysisResult, ReviewerAnalysisResult, RiskAnalysisResult
-
-GITLAB_BASE_URL = "https://gitlab.com/api/v4"
+from models.schemas import (
+    DependencyAnalysisResult,
+    ReviewerAnalysisResult,
+    RiskAnalysisResult,
+)
 
 
 class GitLabService:
     """
-    Stateful boundary client isolating PRISM from GitLab's raw HTTP layer.
-    Pre-configures connection pooling and unified auth.
+    Encapsulates all RESTful communications with the GitLab V4 APIs targeting MRs structurally.
+    Fully asynchronous via Httpx enforcing single transport-layer connections efficiently.
     """
 
     def __init__(self) -> None:
-        self.base_url: str = GITLAB_BASE_URL
-        self.headers: dict[str, str] = {
-            "PRIVATE-TOKEN": settings.gitlab_pat,
-            "Content-Type": "application/json",
-        }
-
-    def _client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(
-            base_url=self.base_url,
-            headers=self.headers,
-            timeout=30.0,
+        self._client = httpx.AsyncClient(
+            base_url="https://gitlab.com/api/v4",
+            headers={"PRIVATE-TOKEN": settings.gitlab_pat},
+            timeout=10.0,
         )
 
-    async def get_mr_diffs(self, project_id: int, mr_iid: int) -> list[dict[str, Any]]:
-        """Extract line-level architectural mutations for a specific merge request."""
-        async with self._client() as client:
-            gitlab_response: httpx.Response = await client.get(
+    async def get_mr_diff(self, project_id: int, mr_iid: int) -> dict | None:
+        """Retrieves exact file boundary diff streams directly from GitLab storage APIs."""
+        try:
+            gitlab_response = await self._client.get(
                 f"/projects/{project_id}/merge_requests/{mr_iid}/diffs"
             )
             gitlab_response.raise_for_status()
             return gitlab_response.json()
+        except httpx.HTTPError:
+            return None
 
-    async def get_mr_commits(self, project_id: int, mr_iid: int) -> list[dict[str, Any]]:
-        """Fetch the chronological sequence of commits establishing the behavioral payload of the MR."""
-        async with self._client() as client:
-            gitlab_response: httpx.Response = await client.get(
+    async def get_mr_commits(self, project_id: int, mr_iid: int) -> list[dict]:
+        """Maps specific commit histories explicitly bound against an active tracking MR."""
+        try:
+            gitlab_response = await self._client.get(
                 f"/projects/{project_id}/merge_requests/{mr_iid}/commits"
             )
             gitlab_response.raise_for_status()
             return gitlab_response.json()
-
-    async def get_user_by_id(self, user_id: int) -> dict[str, Any]:
-        """Resolve numeric author IDs to global usernames for downstream `@` tagging."""
-        async with self._client() as client:
-            gitlab_response: httpx.Response = await client.get(f"/users/{user_id}")
-            gitlab_response.raise_for_status()
-            return gitlab_response.json()
+        except httpx.HTTPError:
+            return []
 
     async def post_mr_comment(self, project_id: int, mr_iid: int, body: str) -> None:
-        """Inject the finalized PRISM computational report directly back into the remote MR thread."""
-        async with self._client() as client:
-            gitlab_response: httpx.Response = await client.post(
+        """Publishes the overarching PRISM metrics markdown payload instantly directly into developer focus."""
+        try:
+            await self._client.post(
                 f"/projects/{project_id}/merge_requests/{mr_iid}/notes",
                 json={"body": body},
             )
-            gitlab_response.raise_for_status()
-
-    async def assign_reviewers(self, project_id: int, mr_iid: int, reviewer_ids: list[int]) -> None:
-        """Surgically override the merge request assignee blocks logically routing ownership."""
-        async with self._client() as client:
-            gitlab_response: httpx.Response = await client.put(
-                f"/projects/{project_id}/merge_requests/{mr_iid}",
-                json={"reviewer_ids": reviewer_ids},
-            )
-            gitlab_response.raise_for_status()
+        except httpx.HTTPError:
+            pass
 
     async def add_labels(self, project_id: int, mr_iid: int, labels: list[str]) -> None:
-        """Emblazon the structural MR with color-coded, queryable risk posture signals dynamically."""
-        async with self._client() as client:
-            gitlab_response: httpx.Response = await client.put(
+        """Pushes architectural hazard warnings explicitly as Merge Request Tags structurally."""
+        if not labels:
+            return
+        labels_str: str = ",".join(labels)
+        try:
+            await self._client.put(
                 f"/projects/{project_id}/merge_requests/{mr_iid}",
-                json={"labels": ",".join(labels)},
+                json={"add_labels": labels_str},
             )
-            gitlab_response.raise_for_status()
+        except httpx.HTTPError:
+            pass
+
+    async def assign_reviewers(
+        self, 
+        project_id: int, 
+        mr_iid: int, 
+        reviewer_usernames: list[str]
+    ) -> None:
+        """
+        Auto-assign suggested reviewers to the MR via GitLab API.
+        Resolves usernames to user IDs first, then assigns.
+        Fails silently — reviewer assignment is best-effort.
+        """
+        if not reviewer_usernames:
+            return
+            
+        try:
+            # Resolve usernames to GitLab user IDs
+            reviewer_ids = []
+            for username in reviewer_usernames[:3]:  # Max 3 reviewers
+                try:
+                    response = await self._client.get(
+                        f"/users",
+                        params={"username": username}
+                    )
+                    response.raise_for_status()
+                    users = response.json()
+                    if users:
+                        reviewer_ids.append(users[0]["id"])
+                except Exception:
+                    continue
+            
+            if not reviewer_ids:
+                return
+                
+            # Assign reviewers to MR
+            await self._client.put(
+                f"/projects/{project_id}/merge_requests/{mr_iid}",
+                json={"reviewer_ids": reviewer_ids}
+            )
+        except Exception:
+            # Reviewer assignment is non-critical — never crash pipeline
+            pass
 
 
 def format_comment(
@@ -90,65 +118,67 @@ def format_comment(
     reviewer_analysis: ReviewerAnalysisResult,
     ai_summary: str,
 ) -> str:
-    """
-    Project the mathematical PRISM structures into a human-readable Markdown telemetry report formatting.
-    """
-    emoji_map: dict[str, str] = {
-        "critical": "🔴",
-        "high": "🟠",
-        "medium": "🟡",
-        "low": "🟢",
+    """Preconstructs the Markdown visualization template injected into GitLab."""
+    
+    score_icons: dict[str, str] = {
+        "critical": "💥 CRITICAL RISK",
+        "high": "🔴 HIGH RISK",
+        "medium": "🟠 MEDIUM RISK",
+        "low": "🟢 LOW RISK",
     }
-    emoji: str = emoji_map.get(risk_analysis.level, "⚪")
+    icon: str = score_icons.get(risk_analysis.level, "❓ UNKNOWN RISK")
 
-    blast_chain: str = " → ".join(dependency_analysis.blast_radius[:8]) if dependency_analysis.blast_radius else "No downstream impact detected"
+    blast_radius_str: str = " → ".join(dependency_analysis.blast_radius[:5])
+    if len(dependency_analysis.blast_radius) > 5:
+        blast_radius_str += f" → (+{len(dependency_analysis.blast_radius) - 5} more)"
+    if not blast_radius_str:
+        blast_radius_str = "No downstream modules detected."
 
-    breakdown = risk_analysis.breakdown
-    rows: list[str] = []
-
-    factor_labels = {
-        "pr_size": ("PR Size", lambda d: f"{d.get('lines', 0)} lines changed"),
-        "file_churn": ("File Churn", lambda d: f"{d.get('max_churn', 0)} commits / 30 days"),
-        "core_module": ("Core Module Touched", lambda d: "Yes" if d.get("points", 0) > 0 else "No"),
-        "test_coverage": ("Test Coverage", lambda d: "Tests removed" if d.get("points", 0) == 20 else ("No tests added" if d.get("points", 0) > 0 else "OK")),
-        "dep_depth": ("Dependency Depth", lambda d: f"{d.get('depth', 0)} layers"),
-        "author_exp": ("Author Experience", lambda d: "New to module" if d.get("points", 0) > 0 else "Experienced"),
+    breakdown_rows: str = ""
+    factor_labels: dict[str, str] = {
+        "pr_size": "PR Size",
+        "file_churn": "File Churn",
+        "core_module": "Core Module Touched",
+        "test_coverage": "Tests Removed/Missing",
+        "dep_depth": "Dependency Depth",
+        "author_exp": "Author Experience in Module",
     }
 
-    for key, (label, signal_fn) in factor_labels.items():
-        factor_data: dict[str, int | str] = getattr(breakdown, key, {})
-        points: int = int(factor_data.get("points", 0))
-        signal: str = str(signal_fn(factor_data))
-        rows.append(f"| {label} | {signal} | +{points} |")
+    raw_breakdown = risk_analysis.breakdown.model_dump()
+    for key, label in factor_labels.items():
+        data = raw_breakdown.get(key, {})
+        points: int = data.get("points", 0)
+        signal: str = data.get("signal", "N/A")
+        if points > 0:
+            breakdown_rows += f"| {label} | {signal} | +{points} |\n"
 
-    rows_str: str = "\n".join(rows)
+    total_score: str = f"**{risk_analysis.score}**"
 
-    reviewer_mentions: str = " ".join(
-        [f"@{r.username}" for r in reviewer_analysis.reviewers]
-    ) if reviewer_analysis.reviewers else "No reviewers suggested"
+    reviewer_str: str = " ".join([f"@{r.username}" for r in reviewer_analysis.reviewers])
+    if not reviewer_str:
+        reviewer_str = "No specific reviewers identified based on git history."
 
-    comment: str = f"""## 🛡️ PRISM — Risk Analysis Report
+    markdown: str = f"""## 🛡️ PRISM-AI — Risk Analysis Report
 
-**Risk Score: {risk_analysis.score} / 100** {emoji} {risk_analysis.level.upper()}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**Risk Score: {risk_analysis.score} / 100** {icon}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ### 💥 Blast Radius
-`{blast_chain}`
-**{dependency_analysis.total_affected} downstream modules across {dependency_analysis.max_impact_depth} dependency layers**
+`{blast_radius_str}`
+**{dependency_analysis.total_affected} downstream modules affected across {dependency_analysis.max_impact_depth} dependency layers**
 
 ### 📊 Risk Score Breakdown
-| Factor | Signal | Points |
-|--------|--------|--------|
-{rows_str}
-| **Total** | | **{risk_analysis.score}** |
+| Factor              | Signal                | Points |
+|---------------------|-----------------------|--------|
+{breakdown_rows}
+| **Total**           |                       | {total_score}  |
 
 ### 🤖 AI Risk Summary
-> {ai_summary}
+> {ai_summary.replace(chr(10), chr(10) + "> ")}
 
 ### 👥 Suggested Reviewers
-{reviewer_mentions}
+{reviewer_str}
 
 ---
-*Powered by PRISM · GitLab AI Hackathon 2026 · Tech_Exchangers*"""
-
-    return comment
+*Powered by PRISM-AI · GitLab AI Hackathon 2026 · ZerothLayer*"""
+    return markdown

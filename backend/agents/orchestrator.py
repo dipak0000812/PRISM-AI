@@ -107,6 +107,14 @@ class AgentOrchestrator:
                 mr_event.project_id, mr_event.mr_iid, comment
             )
 
+            # Auto-assign GitLab MR Reviewers natively integrating API parameters
+            if reviewer_analysis.reviewers:
+                await self.gitlab.assign_reviewers(
+                    mr_event.project_id,
+                    mr_event.mr_iid,
+                    [r.username for r in reviewer_analysis.reviewers[:3]]
+                )
+
             if risk_analysis.score >= settings.risk_block_threshold:
                 await self.gitlab.add_labels(
                     mr_event.project_id,
