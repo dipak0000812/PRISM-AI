@@ -6,6 +6,7 @@ import { LogoSection } from "@/components/landing/LogoSection";
 import { FeatureSection } from "@/components/landing/FeatureSection";
 import { Showcase } from "@/components/landing/Showcase";
 import { CTASection } from "@/components/landing/CTASection";
+import { TeamSection } from "@/components/landing/TeamSection";
 import { Footer } from "@/components/landing/Footer";
 import { 
   Shield, Zap, Search, Globe, 
@@ -242,6 +243,7 @@ export default function LandingPage() {
         <CTASection />
       </main>
 
+      <TeamSection />
       <Footer />
     </div>
   );
