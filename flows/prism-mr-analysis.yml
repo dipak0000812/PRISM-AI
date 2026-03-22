@@ -1,0 +1,20 @@
+name: PRISM MR Analysis Flow
+version: 1.0.0
+description: |
+  Automatically analyzes merge requests when opened.
+  Posts risk report as MR comment using PRISM-AI intelligence.
+
+trigger:
+  event: merge_request
+  actions:
+    - opened
+    - reopened
+
+steps:
+  - name: analyze_risk
+    agent: prism-risk-agent
+    description: Run PRISM risk analysis on the merge request
+    
+  - name: post_report  
+    action: add_comment
+    content: "{{ steps.analyze_risk.output }}"
