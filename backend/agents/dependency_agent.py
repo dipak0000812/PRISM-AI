@@ -5,6 +5,7 @@ import asyncio
 import os
 import re
 from pathlib import Path
+from typing import Any
 
 import networkx as nx
 import tree_sitter_python as tspython
@@ -253,7 +254,7 @@ class DependencyAgent:
             else:
                 subgraph.nodes[node]["risk_level"] = "safe"
 
-        graph_json: dict[str, list[str]] = nx.node_link_data(subgraph)
+        graph_json: dict[str, Any] = nx.node_link_data(subgraph)
 
         return DependencyAnalysisResult(
             dependency_graph=graph_json,

@@ -14,9 +14,9 @@ const fadeUp = (delay: number) => ({
 });
 
 const STATS = [
-  { value: "< 4s", label: "analysis" },
-  { value: "6", label: "risk factors" },
-  { value: "LLM", label: "AI summaries" },
+  { value: "< 4s", label: "analysis time" },
+  { value: "6", label: "risk signals" },
+  { value: "0", label: "manual triggers" },
 ];
 
 const CODE_SNIPPET = `+ export async function verifyPayment(req, res) {
@@ -119,21 +119,43 @@ export function Hero() {
       {/* Stat row */}
       <motion.div
         {...fadeUp(0.4)}
-        className="mt-8 flex items-center gap-6 flex-wrap justify-center"
+        className="flex items-center justify-center flex-wrap"
+        style={{ marginTop: "32px", gap: "32px" }}
       >
         {STATS.map((s, i) => (
-          <div key={i} className="flex items-center gap-2 text-[13px]">
-            <span
-              className="font-medium text-white"
-              style={{ fontFamily: "var(--font-geist-mono, monospace)" }}
-            >
-              {s.value}
-            </span>
-            <span style={{ color: "#52525b" }}>{s.label}</span>
-            {i < STATS.length - 1 && (
-              <span className="ml-2" style={{ color: "#3f3f46" }}>
-                ·
+          <div key={i} className="flex items-center gap-[32px]">
+            <div className="flex flex-col items-center">
+              <span
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  color: "white",
+                  fontFamily: "var(--font-geist-mono, monospace)",
+                  lineHeight: 1,
+                }}
+              >
+                {s.value}
               </span>
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "#52525b",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  marginTop: "8px",
+                }}
+              >
+                {s.label}
+              </span>
+            </div>
+            {i < STATS.length - 1 && (
+              <div
+                style={{
+                  width: "1px",
+                  height: "32px",
+                  background: "rgba(255,255,255,0.08)",
+                }}
+              />
             )}
           </div>
         ))}

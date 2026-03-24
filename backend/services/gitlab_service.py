@@ -24,7 +24,7 @@ class GitLabService:
             timeout=10.0,
         )
 
-    async def get_mr_diff(self, project_id: int, mr_iid: int) -> dict | None:
+    async def get_mr_diffs(self, project_id: int, mr_iid: int) -> dict | None:
         """Retrieves exact file boundary diff streams directly from GitLab storage APIs."""
         try:
             gitlab_response = await self._client.get(

@@ -178,7 +178,7 @@ export default function MRDetailPage({ params }: { params: Promise<{ id: string 
                     No dependency graph data available
                   </div>
                 ) : (
-                  <BlastRadiusGraph data={mr.blast_radius_data} height={400} showMaximize={false} />
+                  <BlastRadiusGraph data={mr.blast_radius_data as any} height={400} showMaximize={false} />
                 )}
               </div>
 

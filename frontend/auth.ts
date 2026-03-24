@@ -17,6 +17,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     GitLab({
       clientId: process.env.GITLAB_CLIENT_ID!,
       clientSecret: process.env.GITLAB_CLIENT_SECRET!,
+      checks: ["state"],
     }),
     Credentials({
       credentials: {
@@ -67,5 +68,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }
   },
   session: { strategy: "jwt" },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  trustHost: true,
+  useSecureCookies: false,
 })

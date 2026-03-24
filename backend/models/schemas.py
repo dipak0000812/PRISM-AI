@@ -33,9 +33,11 @@ class ChangeAnalysisResult(BaseModel):
     author_module_commits: int = 0
 
 
+from typing import Any
+
 class DependencyAnalysisResult(BaseModel):
     """NetworkX graph traversal output plotting the blast radius of touched components."""
-    dependency_graph: dict[str, list[str]] = Field(default_factory=dict, description="NetworkX node-link JSON")
+    dependency_graph: dict[str, Any] = Field(default_factory=dict, description="NetworkX node-link JSON")
     blast_radius: list[str] = Field(default_factory=list)
     impact_depth: dict[str, int] = Field(default_factory=dict)
     max_impact_depth: int = 0

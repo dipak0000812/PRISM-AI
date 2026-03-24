@@ -1,5 +1,5 @@
 # .gitlab/agents/prism-risk-agent/config.yaml
-name: PRISM Risk Intelligence Agent
+name: PRISM-AI Risk Intelligence Agent
 description: |
   Analyzes GitLab Merge Requests for blast radius, risk score,
   and provides AI-powered review recommendations using PRISM.

@@ -31,6 +31,8 @@ class ChangeAgent:
         Derive high-level volatility metrics natively from GitLab unified diffs.
         """
         diffs: list[dict[str, Any]] = await self.gitlab.get_mr_diffs(mr_event.project_id, mr_event.mr_iid)
+        if diffs is None:
+            diffs = []
 
         changed_files: list[str] = []
         lines_added: int = 0

@@ -2,16 +2,368 @@
 
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { Hero } from "@/components/landing/Hero";
-import { LogoSection } from "@/components/landing/LogoSection";
+import { ProblemSection } from "@/components/landing/ProblemSection";
+import { HowItWorks } from "@/components/landing/HowItWorks";
+import { MetricsSection } from "@/components/landing/MetricsSection";
+import { CommentPreview } from "@/components/landing/CommentPreview";
 import { FeatureSection } from "@/components/landing/FeatureSection";
-import { Showcase } from "@/components/landing/Showcase";
 import { CTASection } from "@/components/landing/CTASection";
+import { TeamSection } from "@/components/landing/TeamSection";
 import { Footer } from "@/components/landing/Footer";
-import { 
-  Shield, Zap, Search, Globe, 
-  ShieldCheck, GitPullRequest, GitCommit 
+import {
+  Shield, Zap, Search, Globe,
+  ShieldCheck, Network, GitBranch,
 } from "lucide-react";
 import { motion } from "framer-motion";
+
+/* ─── Shared card-header dots ─── */
+function CardDots() {
+  return (
+    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#e5484d" }} />
+      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ffb224" }} />
+      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#30a46c" }} />
+    </div>
+  );
+}
+
+/* ─── Blast Radius depth chain card ─── */
+function BlastRadiusCard() {
+  const rows = [
+    { title: "auth/middleware.py", sub: "CHANGED FILE", badge: "ORIGIN", depthColor: { bg: "rgba(229,72,77,0.1)", color: "#e5484d" } },
+    { title: "user_service", sub: "DEPENDS ON AUTH", badge: "DEPTH 1", depthColor: { bg: "rgba(255,178,36,0.1)", color: "#ffb224" } },
+    { title: "payment_service", sub: "TRANSITIVE DEP", badge: "DEPTH 2", depthColor: { bg: "rgba(255,178,36,0.08)", color: "#f59e0b" } },
+    { title: "billing", sub: "DOWNSTREAM IMPACT", badge: "DEPTH 3", depthColor: { bg: "rgba(48,164,108,0.1)", color: "#30a46c" } },
+  ];
+
+  return (
+    <div
+      style={{
+        background: "#0d0d10",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "16px",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          padding: "12px 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <CardDots />
+        <span
+          style={{
+            background: "rgba(229,72,77,0.1)",
+            border: "1px solid rgba(229,72,77,0.2)",
+            color: "#e5484d",
+            fontSize: "9px",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            padding: "3px 10px",
+            borderRadius: "4px",
+          }}
+        >
+          BLAST RADIUS: 4 MODULES
+        </span>
+      </div>
+
+      {/* Rows */}
+      {rows.map((row, i) => (
+        <div
+          key={i}
+          style={{
+            padding: "14px 20px",
+            borderBottom: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                background: "rgba(255,255,255,0.04)",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Network size={16} color="#52525b" strokeWidth={1.5} />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "#f0f0f2",
+                  fontFamily: "var(--font-geist-mono, monospace)",
+                }}
+              >
+                {row.title}
+              </div>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#52525b",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  marginTop: "2px",
+                }}
+              >
+                {row.sub}
+              </div>
+            </div>
+          </div>
+          <span
+            style={{
+              background: row.depthColor.bg,
+              color: row.depthColor.color,
+              fontSize: "9px",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: "4px",
+            }}
+          >
+            {row.badge}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Risk Score breakdown card ─── */
+function RiskScoreCard() {
+  const factors = [
+    { label: "Core Module", pts: "+20" },
+    { label: "File Churn", pts: "+20" },
+    { label: "Tests Removed", pts: "+20" },
+    { label: "New Contributor", pts: "+15" },
+    { label: "Large Diff", pts: "+15" },
+    { label: "No Reviewers", pts: "+10" },
+  ];
+
+  return (
+    <div
+      style={{
+        background: "#0d0d10",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "16px",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.03)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          padding: "12px 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <CardDots />
+        <span
+          style={{
+            background: "rgba(229,72,77,0.1)",
+            border: "1px solid rgba(229,72,77,0.2)",
+            color: "#e5484d",
+            fontSize: "9px",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            padding: "3px 10px",
+            borderRadius: "4px",
+          }}
+        >
+          87 / 100 · CRITICAL
+        </span>
+      </div>
+
+      {/* Factor rows */}
+      {factors.map((sig, i) => (
+        <div
+          key={i}
+          style={{
+            padding: "12px 20px",
+            borderBottom: "1px solid rgba(255,255,255,0.04)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "13px",
+              color: "#a1a1aa",
+              fontFamily: "var(--font-geist-mono, monospace)",
+            }}
+          >
+            {sig.label}
+          </span>
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#ffb224",
+              fontFamily: "var(--font-geist-mono, monospace)",
+            }}
+          >
+            {sig.pts}
+          </span>
+        </div>
+      ))}
+
+      {/* Total row */}
+      <div
+        style={{
+          padding: "16px 20px",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "13px",
+            color: "#71717a",
+            fontFamily: "var(--font-geist-mono, monospace)",
+          }}
+        >
+          Total Score
+        </span>
+        <span
+          style={{
+            fontSize: "20px",
+            fontWeight: 700,
+            color: "#e5484d",
+            fontFamily: "var(--font-geist-mono, monospace)",
+          }}
+        >
+          87 / 100
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Inline stats footer for Risk Score section ─── */
+function RiskScoreStats() {
+  const stats = [
+    { num: "6", label: "risk signals" },
+    { num: "0–100", label: "score range" },
+    { num: "100%", label: "explainable" },
+  ];
+
+  return (
+    <div style={{ display: "flex", gap: "32px" }}>
+      {stats.map((s, i) => (
+        <div key={i} className="flex flex-col">
+          <span
+            style={{
+              fontSize: "22px",
+              fontWeight: 600,
+              color: "white",
+              fontFamily: "var(--font-geist-mono, monospace)",
+              lineHeight: 1,
+            }}
+          >
+            {s.num}
+          </span>
+          <span
+            style={{
+              fontSize: "11px",
+              color: "#52525b",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              marginTop: "4px",
+            }}
+          >
+            {s.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── AI Pipeline card (Feature 3) ─── */
+function AIPipelineCard() {
+  const steps = [
+    { label: "AST Analysis", icon: GitBranch, color: "text-zinc-500", bg: "bg-zinc-500/10" },
+    { label: "Risk Score: 87", icon: Shield, color: "text-yellow-400", bg: "bg-yellow-500/10" },
+    { label: "Groq LLM", icon: Zap, color: "text-white", bg: "bg-indigo-600", isSpecial: true },
+    { label: "Plain English", icon: Search, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+    { label: "MR Comment Posted", icon: ShieldCheck, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  ];
+
+  return (
+    <div
+      style={{
+        background: "#0d0d10",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "16px",
+        overflow: "hidden",
+        padding: "32px",
+      }}
+    >
+      <div className="flex flex-col items-center gap-4">
+        {steps.map((step, i) => (
+          <div key={i} className="flex flex-col items-center gap-3 w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.12 }}
+              className={`flex items-center gap-3 px-5 py-3 min-w-[220px] border border-white/5 rounded-xl transition-all duration-300 ${step.bg} ${step.isSpecial ? "shadow-[0_0_24px_rgba(99,102,241,0.4)] border-white/20" : ""}`}
+            >
+              <step.icon className={`w-4 h-4 ${step.color} shrink-0`} />
+              <span className={`text-[12px] font-semibold uppercase tracking-wider ${step.isSpecial ? "text-white" : "text-zinc-400"}`}>
+                {step.label}
+                {step.isSpecial && <span className="ml-2">⚡</span>}
+              </span>
+            </motion.div>
+            {i < steps.length - 1 && (
+              <div className="w-px h-4 bg-white/10" />
+            )}
+          </div>
+        ))}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.9 }}
+          style={{ marginTop: "8px" }}
+          className="flex items-center gap-4 px-4 py-2 bg-black/40 border border-white/5 rounded-full"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">
+              Analysis complete in &lt;4s
+            </span>
+          </div>
+          <div className="w-px h-3 bg-white/10" />
+          <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest whitespace-nowrap">
+            Comment posted
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
@@ -26,222 +378,55 @@ export default function LandingPage() {
       }}
     >
       <LandingNavbar />
-      
+
       <main>
         <Hero />
-        
-        <LogoSection />
+        <ProblemSection />
+        <HowItWorks />
+        <MetricsSection />
+        <CommentPreview />
 
         <div id="features" className="scroll-mt-24">
+
           {/* Section 1: Forensic Analysis */}
           <FeatureSection
-            badge="Forensic Analysis"
-            title="Understand risk at scale"
-            description="Our advanced intelligence engine analyzes every code modification, identifying transitive dependencies and potential attack vectors before they reach production."
+            badge="Blast Radius"
+            title="Blast Radius Engine"
+            description="tree-sitter parses your codebase into an AST. NetworkX BFS traversal maps every downstream module at risk. Color-coded by impact depth."
             icon={Shield}
           >
-            <div className="relative group/card transition-all duration-700 hover:scale-[1.02]">
-               <div className="absolute -inset-1 bg-linear-to-r from-indigo-500/20 to-transparent blur-3xl opacity-50 -z-10" />
-               <div className="p-8 bg-zinc-900/40 border border-white/10 rounded-[32px] md:rounded-[40px] aspect-video flex flex-col gap-6 backdrop-blur-3xl shadow-2xl">
-                  {/* Mac Window Header */}
-                  <div className="flex items-center justify-between border-b border-white/5 pb-6 whitespace-nowrap overflow-hidden">
-                     <div className="flex gap-2.5">
-                        <div className="w-3 h-3 rounded-full bg-[#FF5F57] shadow-lg shadow-red-500/20" />
-                        <div className="w-3 h-3 rounded-full bg-[#FEBC2E] shadow-lg shadow-yellow-500/20" />
-                        <div className="w-3 h-3 rounded-full bg-[#28C840] shadow-lg shadow-green-500/20" />
-                     </div>
-                     <div className="px-3.5 py-1 bg-red-500/10 border border-red-500/30 rounded-full text-[9px] font-black uppercase text-red-500 tracking-[0.15em] shrink-0 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                        3 Critical Threats
-                     </div>
-                  </div>
-
-                  <div className="flex-1 space-y-4 pt-2">
-                     {[
-                        { title: "Auth Bypass Node", sub: "package-json", badge: "Critical", color: "text-red-400", bg: "bg-red-500/10" },
-                        { title: "Data Leak Pattern", sub: "api-v1-users", badge: "High", color: "text-orange-400", bg: "bg-orange-500/10" },
-                        { title: "Logic Flow Invert", sub: "auth-strategy", badge: "Medium", color: "text-yellow-400", bg: "bg-yellow-500/10" },
-                        { title: "Dependency Risk", sub: "lodash-v4", badge: "Low", color: "text-green-400", bg: "bg-green-500/10" }
-                     ].map((item, i) => (
-                        <div key={i} className="group/row flex items-center justify-between p-4 bg-zinc-950/40 border border-white/5 rounded-2xl hover:bg-white/5 transition-all duration-300">
-                           <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center group-hover/row:border-white/20 transition-colors">
-                                 <Shield className="w-5 h-5 text-zinc-500 group-hover/row:text-zinc-300 transition-colors" strokeWidth={1.5} />
-                              </div>
-                              <div className="flex flex-col gap-0.5">
-                                 <span className="text-[13px] font-black text-white tracking-tight">{item.title}</span>
-                                 <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">{item.sub}</span>
-                              </div>
-                           </div>
-                           <div className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${item.bg} ${item.color}`}>
-                              {item.badge}
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-               </div>
-            </div>
+            <BlastRadiusCard />
           </FeatureSection>
 
-          {/* Section 2: Autonomous Intelligence */}
+          {/* Feature 2 — Deterministic Risk Score */}
           <FeatureSection
-            badge="Autonomous Intelligence"
-            title="AI-powered forensic insights"
-            description="Go beyond basic security scans. PRISM leverages custom-trained models to detect sophisticated anomalies, logic flaws, and supply chain vulnerabilities in real-time."
-            icon={Zap}
+            badge="Risk Scoring"
+            badgeDotColor="#ffb224"
+            title="Deterministic Risk Score"
+            description="Six signals. No black box. Every point is traceable to a specific, measurable fact from your git history and code structure."
+            icon={Shield}
             reverse
+            textFooter={<RiskScoreStats />}
           >
-             <div className="relative group/ai transition-all duration-1000">
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 blur-[100px] -z-10 opacity-50" />
-               <div className="grid grid-cols-2 gap-5">
-                  <motion.div 
-                    initial={{ y: 0 }}
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                    className="col-span-2 p-12 bg-indigo-500/5 border border-indigo-500/10 rounded-[40px] flex flex-col gap-6 items-center justify-center backdrop-blur-3xl relative overflow-hidden group/top hover:bg-indigo-500/10 transition-all duration-500 hover:border-indigo-500/20"
-                  >
-                     <div className="absolute inset-0 bg-linear-to-b from-indigo-500/10 to-transparent opacity-0 group-hover/top:opacity-100 transition-opacity" />
-                     <motion.div 
-                        animate={{ top: ["0%", "100%", "0%"] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                        className="absolute left-0 right-0 h-px bg-linear-to-r from-transparent via-indigo-400 to-transparent opacity-30 z-20"
-                     />
-                     
-                     <div className="relative w-24 h-24 mb-2">
-                        <Zap className="w-full h-full text-indigo-400 absolute inset-0 blur-2xl opacity-40 animate-pulse" />
-                        <Zap className="w-full h-full text-white relative z-10" />
-                     </div>
-                     <div className="flex flex-col items-center gap-2">
-                        <p className="text-xs font-black uppercase tracking-[0.4em] text-indigo-400">Deep Scan Active</p>
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest animate-pulse">Scanning repository for vulnerabilities...</p>
-                     </div>
-                  </motion.div>
-
-                  <motion.div 
-                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.08)" }}
-                    className="p-6 bg-black/40 border border-white/5 rounded-3xl flex flex-col gap-4 backdrop-blur-md transition-all duration-300 group/threat"
-                  >
-                     <div className="flex items-center justify-between">
-                        <div className="p-2 bg-red-500/10 rounded-lg">
-                           <Search className="w-4 h-4 text-red-500" />
-                        </div>
-                        <div className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full text-[8px] font-black text-red-500 tracking-widest">CRITICAL</div>
-                     </div>
-                     <div className="flex flex-col gap-1.5">
-                        <h4 className="text-[11px] font-black text-white uppercase tracking-wider flex items-center gap-2">
-                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                           Recent Threat
-                        </h4>
-                        <div className="flex flex-col">
-                           <span className="text-[10px] font-bold text-zinc-400">auth-service</span>
-                           <span className="text-[9px] font-medium text-zinc-600 italic">middleware/auth.ts</span>
-                        </div>
-                     </div>
-                  </motion.div>
-
-                  <motion.div 
-                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255,255,255,0.08)" }}
-                    className="p-6 bg-zinc-900/40 border border-white/5 rounded-3xl flex flex-col gap-4 backdrop-blur-md transition-all duration-300 group/insight"
-                  >
-                     <div className="flex items-center justify-between">
-                        <div className="p-2 bg-indigo-500/10 rounded-lg">
-                           <Globe className="w-4 h-4 text-indigo-400" />
-                        </div>
-                        <div className="text-[9px] font-black text-indigo-400 tracking-widest">92% CONFIDENCE</div>
-                     </div>
-                     <div className="flex flex-col gap-1.5">
-                        <h4 className="text-[11px] font-black text-white uppercase tracking-wider flex items-center gap-2">
-                           AI Insight
-                        </h4>
-                        <p className="text-[10px] font-medium text-zinc-500 leading-tight">
-                           Potential Auth bypass vulnerability detected via transitive dependency.
-                        </p>
-                     </div>
-                  </motion.div>
-               </div>
-            </div>
+            <RiskScoreCard />
           </FeatureSection>
 
-          {/* Section 3: Security Operations */}
+          {/* Feature 3: AI That Explains, Not Decides */}
           <FeatureSection
-            badge="Security Operations"
-            title="Ship faster with confidence"
-            description="Integrate seamlessly into your CI/CD pipelines. Automate risk approvals and focus your elite talent on high-level architecture instead of chasing false positives."
-            icon={Shield}
+            badge="AI Summary"
+            badgeDotColor="#30a46c"
+            title="AI That Explains, Not Decides"
+            description="Groq LLM translates structured analysis into plain English. The algorithms make the risk decision. The AI communicates it."
+            icon={Zap}
           >
-             <div className="relative group/pipeline transition-all duration-1000">
-
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/5 blur-[120px] -z-10 opacity-30" />
-
-               <div className="relative p-10 bg-zinc-900/30 border border-white/10 rounded-[48px] overflow-hidden backdrop-blur-3xl shadow-2xl group-hover/pipeline:border-white/20 transition-all duration-500">
-                  <div className="absolute top-8 left-8 flex flex-col gap-1">
-                     <span className="text-[11px] font-black text-emerald-400">+42%</span>
-                     <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest">Faster Reviews</span>
-                  </div>
-                  <div className="absolute bottom-8 right-8 flex flex-col items-end gap-1">
-                     <span className="text-[11px] font-black text-indigo-400">↓ 67%</span>
-                     <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest text-right">False Positives</span>
-                  </div>
-
-                  <div className="flex flex-col items-center gap-4 relative z-10 py-6 text-center">
-                     {[
-                        { label: "Git Push", icon: GitCommit, color: "text-zinc-500", bg: "bg-zinc-500/10" },
-                        { label: "PR Created", icon: GitPullRequest, color: "text-blue-400", bg: "bg-blue-500/10" },
-                        { label: "PRISM Scan", icon: Zap, color: "text-white", bg: "bg-indigo-600", isSpecial: true },
-                        { label: "Risk Analysis", icon: Search, color: "text-yellow-400", bg: "bg-yellow-500/10" },
-                        { label: "Auto Approved", icon: ShieldCheck, color: "text-emerald-400", bg: "bg-emerald-500/10" }
-                     ].map((step, i) => (
-                        <div key={i} className="flex flex-col items-center gap-4 w-full">
-                           <motion.div 
-                              initial={{ opacity: 0, y: 20 }}
-                              whileInView={{ opacity: 1, y: 0 }}
-                              viewport={{ once: true }}
-                              transition={{ duration: 0.5, delay: i * 0.15 }}
-                              className={`flex items-center gap-4 px-6 py-3 min-w-[200px] border border-white/5 rounded-2xl transition-all duration-300 ${step.bg} ${step.isSpecial ? 'shadow-[0_0_30px_rgba(99,102,241,0.5)] border-white/20 animate-pulse' : 'hover:bg-white/5 group-hover/pipeline:border-white/10'}`}
-                           >
-                              <step.icon className={`w-4 h-4 ${step.color}`} />
-                              <span className={`text-[11px] font-black uppercase tracking-widest ${step.isSpecial ? 'text-white' : 'text-zinc-400'}`}>
-                                 {step.label}
-                                 {step.isSpecial && <span className="ml-2 animate-pulse">⚡</span>}
-                              </span>
-                           </motion.div>
-                           
-                           {i < 4 && (
-                              <motion.div 
-                                 initial={{ height: 0 }}
-                                 whileInView={{ height: 16 }}
-                                 viewport={{ once: true }}
-                                 transition={{ duration: 0.3, delay: (i * 0.15) + 0.1 }}
-                                 className="w-px bg-linear-to-b from-white/10 to-transparent"
-                              />
-                           )}
-                        </div>
-                     ))}
-
-                     <motion.div 
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 1, delay: 1 }}
-                        className="mt-8 flex items-center gap-6 px-4 py-2 bg-black/40 border border-white/5 rounded-full"
-                     >
-                        <div className="flex items-center gap-2">
-                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                           <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">Scan complete in 2.3s</span>
-                        </div>
-                        <div className="w-px h-3 bg-white/10" />
-                        <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest whitespace-nowrap">0 critical issues</div>
-                     </motion.div>
-                  </div>
-                </div>
-             </div>
+            <AIPipelineCard />
           </FeatureSection>
         </div>
-
-        <Showcase />
 
         <CTASection />
       </main>
 
+      <TeamSection />
       <Footer />
     </div>
   );

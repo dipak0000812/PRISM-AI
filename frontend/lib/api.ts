@@ -6,6 +6,8 @@ const api = axios.create({
 
 export interface Analysis {
   id: number
+  project_gitlab_id: number
+  project_namespace: string
   mr_iid: number
   mr_title: string
   author_username: string

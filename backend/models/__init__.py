@@ -1,13 +1,13 @@
 """PRISM Models Package."""
 from models.schemas import (
-    MREvent, ChangeResult, DependencyResult, HistoryResult,
-    RiskBreakdown, RiskResult, ReviewerSuggestion, ReviewerResult,
-    AnalysisResult,
+    MREvent, ChangeAnalysisResult, DependencyAnalysisResult, HistoryAnalysisResult,
+    RiskBreakdown, RiskAnalysisResult, ReviewerSuggestion, ReviewerAnalysisResult,
+    PipelineAnalysisResult,
 )
 from models.db_models import Base, MRAnalysis, FileRiskHistory
 
 __all__ = [
-    "MREvent", "ChangeResult", "DependencyResult", "HistoryResult",
-    "RiskBreakdown", "RiskResult", "ReviewerSuggestion", "ReviewerResult",
-    "AnalysisResult", "Base", "MRAnalysis", "FileRiskHistory",
+    "MREvent", "ChangeAnalysisResult", "DependencyAnalysisResult", "HistoryAnalysisResult",
+    "RiskBreakdown", "RiskAnalysisResult", "ReviewerSuggestion", "ReviewerAnalysisResult",
+    "PipelineAnalysisResult", "Base", "MRAnalysis", "FileRiskHistory",
 ]

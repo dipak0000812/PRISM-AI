@@ -28,7 +28,7 @@ async def lifespan(app_instance: FastAPI):
 
 
 app = FastAPI(
-    title="PRISM API",
+    title="PRISM-AI",
     description="Autonomous Risk Intelligence for GitLab Merge Requests",
     version="1.0.0",
     lifespan=lifespan,
@@ -37,7 +37,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
