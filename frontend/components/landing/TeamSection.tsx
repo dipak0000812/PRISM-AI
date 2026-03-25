@@ -14,20 +14,11 @@ const members = [
     accent: "#5b8af5",
   },
   {
-    firstName: "Purva",
-    lastName: "Ahirrao",
-    role: "Backend Developer",
-    image: "/team/purva.jpeg",
-    index: "02",
-    accent: "#4a77e8",
-    objectPosition: "center 15%"
-  },
-  {
     firstName: "Nihar",
     lastName: "Patil",
     role: "Frontend Developer",
     image: "/team/nihar.jpeg",
-    index: "03",
+    index: "02",
     accent: "#7fa3f8",
     objectPosition: "center 50%"
 
@@ -37,7 +28,7 @@ const members = [
     lastName: "Borse",
     role: "Presenter · Strategy",
     image: "/team/aakanksha.jpeg",
-    index: "04",
+    index: "03",
     accent: "#8baef9",
     objectPosition: "center 10%"
   },
@@ -411,7 +402,7 @@ export function TeamSection() {
             marginBottom: "72px",
           }}
         >
-          Four engineers. One obsession.
+          Three engineers. One obsession.
         </motion.p>
 
         {/* Card grid */}
