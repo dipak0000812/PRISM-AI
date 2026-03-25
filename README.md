@@ -1,6 +1,9 @@
 # PRISM 
 **Autonomous blast radius intelligence for every merge request.**
 
+**🔴 Live Demo:** [prism-ai.vercel.app](https://prism-ai.vercel.app)  
+**⚡ API:** [your-railway-url.railway.app/health](https://your-railway-url.railway.app/health)
+
 [![GitLab AI Hackathon](https://img.shields.io/badge/GitLab_AI_Hackathon-2026-fc6d26?logo=gitlab)](https://about.gitlab.com)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js)](https://nextjs.org)
