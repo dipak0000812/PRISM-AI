@@ -17,7 +17,7 @@ const members = [
     firstName: "Purva",
     lastName: "Ahirrao",
     role: "Backend Developer",
-    image: "/team/purva.jpg",
+    image: "/team/purva.jpeg",
     index: "02",
     accent: "#4a77e8",
     objectPosition: "center 15%"
